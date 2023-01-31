@@ -1,4 +1,5 @@
 #include "IrInput.h"
+#include "hardware.h"
 
 IrInput::IrInput(int up, int down)
 {
