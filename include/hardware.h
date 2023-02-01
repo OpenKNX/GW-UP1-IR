@@ -1,6 +1,6 @@
 //--------------------Allgemein---------------------------
 #define MAIN_OpenKnxId 0xAF
-#define MAIN_ApplicationNumber 0xAF00
+#define MAIN_ApplicationNumber 0x00
 #define MAIN_ApplicationVersion 0x11
 #define MAIN_OrderNumber "TA-00002.1" //may not work with multiple devices on same hardware or app on different hardware
 
