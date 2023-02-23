@@ -48,7 +48,12 @@ void LedModule::loop()
 {
     if(rec->decode())
 	{
-
+		log("Received IR Code");
+		openknx.logger.indentUp();
+		log("Protokoll %u", rec->decodedIRData.protocol);
+		log("Address %u", rec->decodedIRData.address);
+		log("Command %u", rec->decodedIRData.command);
+		openknx.logger.indentDown();
 		rec->resume();
 	}
 }
