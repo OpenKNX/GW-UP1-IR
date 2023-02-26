@@ -39,22 +39,25 @@ const std::string LedModule::version()
 //only if knx.configured == true
 void LedModule::setup()
 {
-    rec = new IRrecv(D1);
+    rec = new IRrecv(22);
+	rec->enableIRIn();
+	logInfoP("setup");
 }
 
-//will be called every loop
-//only if knx.configured == true
 void LedModule::loop()
 {
     if(rec->decode())
 	{
-		log("Received IR Code");
-		openknx.logger.indentUp();
-		log("Protokoll %u", rec->decodedIRData.protocol);
-		log("Address %u", rec->decodedIRData.address);
-		log("Command %u", rec->decodedIRData.command);
-		openknx.logger.indentDown();
 		rec->resume();
+		if(rec->decodedIRData.protocol == 0) return;
+
+		logInfoP("Received IR Code");
+		logIndentUp();
+		logInfoP("Protokoll %u", rec->decodedIRData.protocol);
+		logInfoP("Address %u", rec->decodedIRData.address);
+		logInfoP("Command %u", rec->decodedIRData.command);
+		logIndentDown();
+		logErrorP("Nichts zu tun hier oder was?");
 	}
 }
 
