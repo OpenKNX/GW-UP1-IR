@@ -21,7 +21,7 @@ class IrCodeModule : public OpenKNX::Module
 		IRrecv *rec;
 		IRData read(uint8_t index);
 		void write(uint8_t index, IRData data);
-		void print(IRData data);
+		void print(IRData data, int index);
 };
 
 //Give your Module a name
@@ -48,7 +48,7 @@ void IrCodeModule::setup()
 
 	logInfoP("setup");
 	IRData data = this->read(0);
-	this->print(data);
+	this->print(data, 0);
 }
 
 void IrCodeModule::loop()
@@ -57,19 +57,42 @@ void IrCodeModule::loop()
 	{
 		rec->resume();
 		if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
-		this->print(rec->decodedIRData);
+		this->print(rec->decodedIRData, -1);
 		this->write(0, rec->decodedIRData);
+	}
+	if(Serial2.available())
+	{
+		byte b1 = Serial2.read();
+		if(b1 == 0xAB)
+		{
+			b1 = Serial.read();
+			if(b1 == 0xFF)
+			{
+				b1 = Serial.read();
+				IRData data;
+				data.protocol = (decode_type_t)Serial.read();
+				int temp = Serial.read() << 8;
+				data.address = temp | Serial.read();
+				temp = Serial.read() << 8;
+				data.command = temp | Serial.read();
+				temp = Serial.read() << 8;
+				data.numberOfBits = temp | Serial.read();
+				data.flags = Serial.read();
+				this->print(data, b1);
+				this->write(b1, data);
+			}
+		}
 	}
 }
 
-void IrCodeModule::print(IRData data)
+void IrCodeModule::print(IRData data, int index)
 {
 	if(data.protocol == 0 && data.address == 0)
 	{
-		logErrorP("Ungültiger Code");
+		logErrorP("Ungültiger Code %i", index);
 		return;
 	}
-	logInfoP("IR Code");
+	logInfoP("IR Code %i", index);
 	logIndentUp();
 	logInfoP("Protokoll %u", data.protocol);
 	logInfoP("Address %u", data.address);
