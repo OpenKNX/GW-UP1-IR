@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include "OpenKNX.h"
-#include "LedModule.h"
+#include "IrCodeModule.h"
 
 void setup()
 {
 	const uint8_t firmwareRevision = 0;
     openknx.init(firmwareRevision);
-    openknx.addModule(1, new LedModule());
+    openknx.addModule(1, new IrCodeModule());
     openknx.setup();
 }
 
