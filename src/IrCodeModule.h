@@ -19,9 +19,9 @@ class IrCodeModule : public OpenKNX::Module
 
 	private:
 		IRrecv *rec;
-		IRData read(uint8_t index);
-		void write(uint8_t index, IRData data);
-		void print(IRData data, int index);
+		IRData* read(uint8_t index);
+		void write(uint8_t index, IRData *data);
+		void print(IRData *data, int index);
 };
 
 //Give your Module a name
@@ -47,8 +47,9 @@ void IrCodeModule::setup()
 	rec->enableIRIn();
 
 	logInfoP("setup");
-	IRData data = this->read(0);
+	IRData *data = this->read(0);
 	this->print(data, 0);
+	delete data;
 }
 
 void IrCodeModule::loop()
@@ -57,8 +58,8 @@ void IrCodeModule::loop()
 	{
 		rec->resume();
 		if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
-		this->print(rec->decodedIRData, -1);
-		this->write(0, rec->decodedIRData);
+		this->print(&rec->decodedIRData, -1);
+		this->write(0, &rec->decodedIRData);
 	}
 	if(Serial2.available())
 	{
@@ -69,17 +70,17 @@ void IrCodeModule::loop()
 			if(b1 == 0xFF)
 			{
 				b1 = Serial.read();
-				IRData data;
-				data.protocol = (decode_type_t)Serial.read();
+				IRData *data = new IRData();
+				data->protocol = (decode_type_t)Serial.read();
 				int temp = Serial.read() << 8;
-				data.address = temp | Serial.read();
+				data->address = temp | Serial.read();
 				temp = Serial.read() << 8;
-				data.command = temp | Serial.read();
+				data->command = temp | Serial.read();
 				temp = Serial.read() << 8;
-				data.numberOfBits = temp | Serial.read();
+				data->numberOfBits = temp | Serial.read();
 				temp = Serial.read() << 8;
-				data.extra = temp | Serial.read();
-				data.flags = Serial.read();
+				data->extra = temp | Serial.read();
+				data->flags = Serial.read();
 
 				temp = Serial.read();
 				this->print(data, b1);
@@ -92,57 +93,61 @@ void IrCodeModule::loop()
 
 				this->print(data, b1);
 				this->write(b1, data);
+
+				delete data;
 			}
 		}
 	}
 }
 
-void IrCodeModule::print(IRData data, int index)
+void IrCodeModule::print(IRData *data, int index)
 {
-	if(data.protocol == 0 && data.address == 0)
+	if(data->protocol == 0 && data->address == 0)
 	{
 		logErrorP("Ungültiger Code %i", index);
 		return;
 	}
 	logInfoP("IR Code %i", index);
 	logIndentUp();
-	logInfoP("Protokoll %u", data.protocol);
-	logInfoP("Address %u", data.address);
-	logInfoP("Command %u", data.command);
+	logInfoP("Protokoll %u", data->protocol);
+	logInfoP("Address %u", data->address);
+	logInfoP("Command %u", data->command);
 	logIndentDown();
 }
 
-IRData IrCodeModule::read(uint8_t index)
+IRData* IrCodeModule::read(uint8_t index)
 {
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
 	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
-	IRData data;
-	data.protocol = (decode_type_t)pointer[address];
+	
+	IRData *data = new IRData();
+
+	data->protocol = (decode_type_t)pointer[address];
 	int temp = pointer[address + 1] << 8;
-	data.address = temp | pointer[address + 2];
+	data->address = temp | pointer[address + 2];
 	temp = pointer[address + 3] << 8;
-	data.command = temp | pointer[address + 4];
+	data->command = temp | pointer[address + 4];
 	temp = pointer[address + 5] << 8;
-	data.numberOfBits = temp | pointer[address + 6];
+	data->numberOfBits = temp | pointer[address + 6];
 	temp = pointer[address + 7] << 8;
-	data.extra = temp | pointer[address + 8];
-	data.flags = pointer[address + 9];
+	data->extra = temp | pointer[address + 8];
+	data->flags = pointer[address + 9];
 	return data;
 }
 
-void IrCodeModule::write(uint8_t index, IRData data)
+void IrCodeModule::write(uint8_t index, IRData *data)
 {
 	uint8_t *buffer = new uint8_t[10] {
-		rec->decodedIRData.protocol,
-		rec->decodedIRData.address >> 8,
-		rec->decodedIRData.address & 0xFF,
-		rec->decodedIRData.command >> 8,
-		rec->decodedIRData.command && 0xFF,
-		rec->decodedIRData.numberOfBits >> 8,
-		rec->decodedIRData.numberOfBits && 0xFF,
-		rec->decodedIRData.extra >> 8,
-		rec->decodedIRData.extra && 0xFF,
-		rec->decodedIRData.flags
+		data->protocol,
+		data->address >> 8,
+		data->address & 0xFF,
+		data->command >> 8,
+		data->command && 0xFF,
+		data->numberOfBits >> 8,
+		data->numberOfBits && 0xFF,
+		data->extra >> 8,
+		data->extra && 0xFF,
+		data->flags
 	};
 
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
