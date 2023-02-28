@@ -77,7 +77,19 @@ void IrCodeModule::loop()
 				data.command = temp | Serial.read();
 				temp = Serial.read() << 8;
 				data.numberOfBits = temp | Serial.read();
+				temp = Serial.read() << 8;
+				data.extra = temp | Serial.read();
 				data.flags = Serial.read();
+
+				temp = Serial.read();
+				this->print(data, b1);
+
+				if(temp != 0xAC)
+				{
+					logErrorP("Falscher Endcode!");
+					return;
+				}
+
 				this->print(data, b1);
 				this->write(b1, data);
 			}
@@ -110,21 +122,31 @@ IRData IrCodeModule::read(uint8_t index)
 	data.address = temp | pointer[address + 2];
 	temp = pointer[address + 3] << 8;
 	data.command = temp | pointer[address + 4];
+	temp = pointer[address + 5] << 8;
+	data.numberOfBits = temp | pointer[address + 6];
+	temp = pointer[address + 7] << 8;
+	data.extra = temp | pointer[address + 8];
+	data.flags = pointer[address + 9];
 	return data;
 }
 
 void IrCodeModule::write(uint8_t index, IRData data)
 {
-	uint8_t *buffer = new uint8_t[5] {
+	uint8_t *buffer = new uint8_t[10] {
 		rec->decodedIRData.protocol,
 		rec->decodedIRData.address >> 8,
 		rec->decodedIRData.address & 0xFF,
 		rec->decodedIRData.command >> 8,
-		rec->decodedIRData.command && 0xFF
+		rec->decodedIRData.command && 0xFF,
+		rec->decodedIRData.numberOfBits >> 8,
+		rec->decodedIRData.numberOfBits && 0xFF,
+		rec->decodedIRData.extra >> 8,
+		rec->decodedIRData.extra && 0xFF,
+		rec->decodedIRData.flags
 	};
 
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	knx.platform().writeNonVolatileMemory(0, buffer, 5);
+	knx.platform().writeNonVolatileMemory(0, buffer, 10);
 
 	delete[] buffer;
 }
