@@ -47,42 +47,76 @@ void IrCodeModule::setup()
 	rec->enableIRIn();
 
 	logInfoP("setup");
-	IRData *data = this->read(0);
-	this->print(data, 0);
-	delete data;
+	for(int i = 0; i < 5; i++)
+	{
+		IRData *data = this->read(i);
+		this->print(data, i);
+		delete data;
+	}
+
+	Serial2.setTX(P11);
+	Serial2.setRX(P12);
+	Serial2.begin(115200);
+	delay(1000);
+	Serial2.write(0xAD);
 }
+
+int readState = 0;
 
 void IrCodeModule::loop()
 {
-    if(rec->decode())
+    if(rec->decode() && false)
 	{
 		rec->resume();
 		if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
 		this->print(&rec->decodedIRData, -1);
 		this->write(0, &rec->decodedIRData);
 	}
+
+/*
+	switch(readState)
+	{
+		case 0:
+			if(Serial2.available())
+			{
+				logInfoP("Got Serial Byte");
+				byte b1 = Serial2.read();
+				logInfoP("Byte: %i", b1);
+				if(b1 == 0xAb)
+				{
+					logInfoP("Got Start Code");
+					b1 = Serial2.read
+				}
+			}
+	}*/
+
 	if(Serial2.available())
 	{
+		logInfoP("Got Serial Byte");
 		byte b1 = Serial2.read();
 		if(b1 == 0xAB)
 		{
-			b1 = Serial.read();
+			logInfoP("Got AB");
+			b1 = Serial2.read();
 			if(b1 == 0xFF)
 			{
-				b1 = Serial.read();
+				logInfoP("Got FF");
+				b1 = Serial2.read();
+				logInfoP("Index %u", b1);
 				IRData *data = new IRData();
-				data->protocol = (decode_type_t)Serial.read();
-				int temp = Serial.read() << 8;
-				data->address = temp | Serial.read();
-				temp = Serial.read() << 8;
-				data->command = temp | Serial.read();
-				temp = Serial.read() << 8;
-				data->numberOfBits = temp | Serial.read();
-				temp = Serial.read() << 8;
-				data->extra = temp | Serial.read();
-				data->flags = Serial.read();
+				data->protocol = (decode_type_t)Serial2.read();
+				logInfoP("Protokol: %u", data->protocol);
+				int temp = Serial2.read() << 8;
+				data->address = temp | Serial2.read();
+				temp = Serial2.read() << 8;
+				data->command = temp | Serial2.read();
+				temp = Serial2.read() << 8;
+				data->numberOfBits = temp | Serial2.read();
+				temp = Serial2.read() << 8;
+				data->extra = temp | Serial2.read();
+				data->flags = Serial2.read();
 
-				temp = Serial.read();
+				temp = Serial2.read();
 				this->print(data, b1);
 
 				if(temp != 0xAC)
@@ -117,7 +151,9 @@ void IrCodeModule::print(IRData *data, int index)
 
 IRData* IrCodeModule::read(uint8_t index)
 {
+	logInfoP("Read %u", index);
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
+	logInfoP("Address: %u", address);
 	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
 	
 	IRData *data = new IRData();
@@ -151,7 +187,8 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 	};
 
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	knx.platform().writeNonVolatileMemory(0, buffer, 10);
+	knx.platform().writeNonVolatileMemory(address, buffer, 10);
+	knx.platform().commitNonVolatileMemory();
 
 	delete[] buffer;
 }
