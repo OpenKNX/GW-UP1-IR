@@ -61,8 +61,6 @@ void IrCodeModule::setup()
 	Serial2.write(0xAD);
 }
 
-int readState = 0;
-
 void IrCodeModule::loop()
 {
     if(rec->decode() && false)
@@ -72,23 +70,6 @@ void IrCodeModule::loop()
 		this->print(&rec->decodedIRData, -1);
 		this->write(0, &rec->decodedIRData);
 	}
-
-/*
-	switch(readState)
-	{
-		case 0:
-			if(Serial2.available())
-			{
-				logInfoP("Got Serial Byte");
-				byte b1 = Serial2.read();
-				logInfoP("Byte: %i", b1);
-				if(b1 == 0xAb)
-				{
-					logInfoP("Got Start Code");
-					b1 = Serial2.read
-				}
-			}
-	}*/
 
 	if(Serial2.available())
 	{
@@ -110,6 +91,7 @@ void IrCodeModule::loop()
 				data->address = temp | Serial2.read();
 				temp = Serial2.read() << 8;
 				data->command = temp | Serial2.read();
+				logInfoP("Protokol: %u", data->command);
 				temp = Serial2.read() << 8;
 				data->numberOfBits = temp | Serial2.read();
 				temp = Serial2.read() << 8;
@@ -125,7 +107,6 @@ void IrCodeModule::loop()
 					return;
 				}
 
-				this->print(data, b1);
 				this->write(b1, data);
 
 				delete data;
