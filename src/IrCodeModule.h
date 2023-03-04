@@ -21,7 +21,11 @@ class IrCodeModule : public OpenKNX::Module
 		IRrecv *rec;
 		IRData* read(uint8_t index);
 		void write(uint8_t index, IRData *data);
-		void print(IRData *data, int index);
+		void print(IRData *data, uint8_t index);
+		bool compare(uint8_t index);
+		void handleCode();
+		bool isEnabled = false;
+		long lastCode = 0;
 };
 
 //Give your Module a name
@@ -45,9 +49,9 @@ void IrCodeModule::setup()
 {
     rec = new IRrecv(P29);
 	rec->enableIRIn();
+	isEnabled = true;
 
-	logInfoP("setup");
-	for(int i = 0; i < 5; i++)
+	for(uint8_t i = 0; i < 4; i++)
 	{
 		IRData *data = this->read(i);
 		this->print(data, i);
@@ -57,65 +61,112 @@ void IrCodeModule::setup()
 	Serial2.setTX(P11);
 	Serial2.setRX(P12);
 	Serial2.begin(115200);
-	delay(1000);
 	Serial2.write(0xAD);
 }
 
 void IrCodeModule::loop()
 {
-    if(rec->decode() && false)
+    if(rec->decode())
 	{
 		rec->resume();
-		if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
-		this->print(&rec->decodedIRData, -1);
-		this->write(0, &rec->decodedIRData);
+		handleCode();
 	}
 
 	if(Serial2.available())
 	{
-		logInfoP("Got Serial Byte");
 		byte b1 = Serial2.read();
+		logInfoP("Got Serial Byte %.2X", b1);
 		if(b1 == 0xAB)
 		{
 			logInfoP("Got AB");
 			b1 = Serial2.read();
-			if(b1 == 0xFF)
+			logInfoP("Got %.2X", b1);
+
+			switch(b1)
 			{
-				logInfoP("Got FF");
-				b1 = Serial2.read();
-				logInfoP("Index %u", b1);
-				IRData *data = new IRData();
-				data->protocol = (decode_type_t)Serial2.read();
-				logInfoP("Protokol: %u", data->protocol);
-				int temp = Serial2.read() << 8;
-				data->address = temp | Serial2.read();
-				temp = Serial2.read() << 8;
-				data->command = temp | Serial2.read();
-				logInfoP("Protokol: %u", data->command);
-				temp = Serial2.read() << 8;
-				data->numberOfBits = temp | Serial2.read();
-				temp = Serial2.read() << 8;
-				data->extra = temp | Serial2.read();
-				data->flags = Serial2.read();
-
-				temp = Serial2.read();
-				this->print(data, b1);
-
-				if(temp != 0xAC)
+				case 0xFD:
 				{
-					logErrorP("Falscher Endcode!");
-					return;
+					rec->enableIRIn();
+					logInfoP("IRIn enabled");
+					isEnabled = true;
+					break;
 				}
 
-				this->write(b1, data);
+				case 0xFE:
+				{
+					rec->disableIRIn();
+					logInfoP("IRIn disabled");
+					isEnabled = false;
+					break;
+				}
 
-				delete data;
+				case 0xFF:
+				{
+					b1 = Serial2.read();
+					IRData *data = new IRData();
+					data->protocol = (decode_type_t)Serial2.read();
+					int temp = Serial2.read() << 8;
+					data->address = temp | Serial2.read();
+					temp = Serial2.read() << 8;
+					data->command = temp | Serial2.read();
+					temp = Serial2.read() << 8;
+					data->numberOfBits = temp | Serial2.read();
+					temp = Serial2.read() << 8;
+					data->extra = temp | Serial2.read();
+					data->flags = Serial2.read();
+
+					temp = Serial2.read();
+					this->print(data, b1);
+
+					if(temp != 0xAC)
+					{
+						logErrorP("Falscher Endcode!");
+						return;
+					}
+
+					this->write(b1, data);
+
+					delete data;
+					if(!isEnabled)
+					{
+						logInfoP("IRIn enabled");
+						rec->enableIRIn();
+					}
+					break;
+				}
 			}
 		}
 	}
 }
 
-void IrCodeModule::print(IRData *data, int index)
+void IrCodeModule::handleCode()
+{
+	if(lastCode + 500 > millis()) return;
+	if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
+	lastCode = millis();
+	this->print(&rec->decodedIRData, -1);
+
+	int index = -1;
+
+	for(int i = 0; i < CODE_COUNT; i++)
+	{
+		if(compare(i))
+		{
+			index = i;
+			break;
+		}
+	}
+
+	if(index == -1)
+	{
+		logErrorP("Code wurde nicht gefunden");
+		return;
+	}
+	logInfoP("Code wurde gefunden: %i", index);
+
+}
+
+void IrCodeModule::print(IRData *data, uint8_t index)
 {
 	if(data->protocol == 0 && data->address == 0)
 	{
@@ -124,17 +175,37 @@ void IrCodeModule::print(IRData *data, int index)
 	}
 	logInfoP("IR Code %i", index);
 	logIndentUp();
-	logInfoP("Protokoll %u", data->protocol);
-	logInfoP("Address %u", data->address);
-	logInfoP("Command %u", data->command);
+	logInfoP("Protokoll %.2X", data->protocol);
+	logInfoP("Address %.4X", data->address);
+	logInfoP("Command %.4X", data->command);
+	logInfoP("Number %.4X", data->numberOfBits);
+	logInfoP("Extra %.4X", data->extra);
+	logInfoP("Flags %.2X", data->flags);
 	logIndentDown();
+}
+
+bool IrCodeModule::compare(uint8_t index)
+{
+	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
+	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
+
+	if(rec->decodedIRData.protocol != (decode_type_t)pointer[address]) return false;
+
+	int temp = pointer[address + 1] << 8;
+	temp = temp | pointer[address + 2];
+	if(rec->decodedIRData.address != temp) return false;
+
+	temp = pointer[address + 3] << 8;
+	temp = temp | pointer[address + 4];
+	if(rec->decodedIRData.command != temp) return false;
+
+	return true;
 }
 
 IRData* IrCodeModule::read(uint8_t index)
 {
-	logInfoP("Read %u", index);
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	logInfoP("Address: %u", address);
+	logInfoP("Address %.4X", address);
 	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
 	
 	IRData *data = new IRData();
@@ -142,33 +213,40 @@ IRData* IrCodeModule::read(uint8_t index)
 	data->protocol = (decode_type_t)pointer[address];
 	int temp = pointer[address + 1] << 8;
 	data->address = temp | pointer[address + 2];
+
 	temp = pointer[address + 3] << 8;
+	logInfoP("%.2X", pointer[address + 3]);
+	logInfoP("%.2X", pointer[address + 4]);
 	data->command = temp | pointer[address + 4];
+	logInfoP("%.4X", data->command);
+
 	temp = pointer[address + 5] << 8;
 	data->numberOfBits = temp | pointer[address + 6];
 	temp = pointer[address + 7] << 8;
 	data->extra = temp | pointer[address + 8];
-	data->flags = pointer[address + 9];
 	return data;
 }
 
 void IrCodeModule::write(uint8_t index, IRData *data)
 {
-	uint8_t *buffer = new uint8_t[10] {
+	uint8_t *buffer = new uint8_t[9] {
 		data->protocol,
 		data->address >> 8,
 		data->address & 0xFF,
 		data->command >> 8,
-		data->command && 0xFF,
+		data->command & 0xFF,
 		data->numberOfBits >> 8,
-		data->numberOfBits && 0xFF,
+		data->numberOfBits & 0xFF,
 		data->extra >> 8,
-		data->extra && 0xFF,
-		data->flags
+		data->extra & 0xFF,
 	};
 
+	logInfoP("%.2X", buffer[3]);
+	logInfoP("%.2X", buffer[4]);
+
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	knx.platform().writeNonVolatileMemory(address, buffer, 10);
+	logInfoP("Address %.4X", address);
+	knx.platform().writeNonVolatileMemory(address, buffer, 9);
 	knx.platform().commitNonVolatileMemory();
 
 	delete[] buffer;
@@ -179,21 +257,3 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 {
     
 }
-
-// void LogModule::writeFlash()
-// {
-//     for (size_t i = 0; i < flashSize(); i++)
-//     {
-//         //openknx.flash.writeByte(0xd0 + i);
-//     }
-// }
-
-// void LogModule::readFlash(const uint8_t* data, const uint16_t size)
-// {
-//     // printHEX("RESTORE:", data,  len);
-// }
-
-// uint16_t LogModule::flashSize()
-// {
-//     return 10;
-// }
