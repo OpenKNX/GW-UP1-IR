@@ -53,13 +53,6 @@ void IrCodeModule::setup()
 	rec->enableIRIn();
 	isEnabled = true;
 
-	for(uint8_t i = 0; i < 4; i++)
-	{
-		IRData *data = this->read(i);
-		this->print(data, i);
-		delete data;
-	}
-
 	Serial2.setTX(P11);
 	Serial2.setRX(P12);
 	Serial2.begin(115200);
@@ -154,50 +147,42 @@ void IrCodeModule::handleCode()
 		{
 			logInfoP("Code wurde gefunden: %i", i);
 
-			int offset = mod_ir_para[i] + PARAM_ir_inOutType;
-			logInfoP("Parameter Offset: %i, offset");
-
-			int type = (knx.paramByte(offset) << PARAM_ir_inOutType_Shift) & PARAM_ir_inOutType_Mask;
-			logInfoP("Parameter Type: %i", type);
+			long offset = mod_ir_para[i] + PARAM_ir_inOutType;
+			int type = (knx.paramByte(offset) & PARAM_ir_inOutType_Mask) >> PARAM_ir_inOutType_Shift;
 			if(type == 1)
 			{
+				Serial2.write(0xAB);
+				Serial2.write(0xFE);
+				Serial2.write((uint8_t)i);
 				executeCode(i);
-				break;
+				return;
 			}
 			logErrorP("IrCode is not configured for receiving");
 		}
 	}
 
 	logErrorP("Code wurde nicht gefunden");
+	Serial2.write(0xAB);
+	Serial2.write(0xFC);
 }
 
 void IrCodeModule::executeCode(int index)
 {
 	int offset = mod_ir_para[index] + PARAM_ir_inType;
-	int type = (knx.paramByte(offset) << PARAM_ir_inType_Shift) & PARAM_ir_inType_Mask;
+	int type = (knx.paramByte(offset) & PARAM_ir_inType_Mask) >> PARAM_ir_inType_Shift;
 	switch(type)
 	{
 		case 0:
 		{
 			logInfoP("Execute Switch");
 			offset = mod_ir_para[index] + PARAM_ir_inSwitch;
-			int sw = (knx.paramByte(offset) << PARAM_ir_inSwitch_Shift) & PARAM_ir_inSwitch_Mask;
+			int sw = (knx.paramByte(offset) & PARAM_ir_inSwitch_Mask) >> PARAM_ir_inSwitch_Shift;
 
 			int coNr1 = 1 + mod_ir_coms[index];
 			int coNr2 = 2 + mod_ir_coms[index];
 
 			switch(sw)
 			{
-				case 0:
-					logInfoP("toggle");
-					KNXValue val = knx.getGroupObject(coNr2).value(DPT_Switch);
-					logInfoP("State is %b", val);
-					bool value = !val;
-					logInfoP("Set state %b", value);
-					knx.getGroupObject(coNr1).value(value, DPT_Switch);
-					knx.getGroupObject(coNr2).valueNoSend(value, DPT_Switch);
-					break;
-
 				case 1:
 					logInfoP("on");
 					knx.getGroupObject(coNr1).value(true, DPT_Switch);
@@ -208,6 +193,16 @@ void IrCodeModule::executeCode(int index)
 					logInfoP("off");
 					knx.getGroupObject(coNr1).value(false, DPT_Switch);
 					knx.getGroupObject(coNr2).valueNoSend(false, DPT_Switch);
+					break;
+
+				case 0:
+					logInfoP("toggle");
+					KNXValue val = knx.getGroupObject(coNr2).value(DPT_Switch);
+					logInfoP("State is %i", val);
+					bool value = !val;
+					logInfoP("Set state %i", value);
+					knx.getGroupObject(coNr1).value(value, DPT_Switch);
+					knx.getGroupObject(coNr2).valueNoSend(value, DPT_Switch);
 					break;
 			}
 			break;
@@ -228,8 +223,8 @@ void IrCodeModule::executeCode(int index)
 		{
 			logInfoP("Execute Scene");
 			offset = mod_ir_para[index] + PARAM_ir_inScene;
-			uint8_t sw = (knx.paramByte(offset) << PARAM_ir_inScene_Shift) & PARAM_ir_inScene_Mask;
-
+			uint8_t sw = (knx.paramByte(offset) & PARAM_ir_inScene_Mask) >> PARAM_ir_inScene_Shift;
+			sw -= 1;
 			int coNr1 = 1 + mod_ir_coms[index];
 			knx.getGroupObject(coNr1).value(sw, DPT_SceneNumber);
 			break;
@@ -244,6 +239,9 @@ void IrCodeModule::executeCode(int index)
 		case 4:
 		{
 			logInfoP("Execute Color");
+			offset = mod_ir_para[index] + PARAM_ir_inColor;
+			uint8_t *color = knx.paramData(offset);
+			logInfoP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
 			break;
 		}
 		
