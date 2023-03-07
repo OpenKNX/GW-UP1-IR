@@ -198,7 +198,7 @@ void IrCodeModule::executeCode(int index)
 				case 0:
 					logInfoP("toggle");
 					KNXValue val = knx.getGroupObject(coNr2).value(DPT_Switch);
-					logInfoP("State is %i", val);
+					logInfoP("State is %i", (bool)val);
 					bool value = !val;
 					logInfoP("Set state %i", value);
 					knx.getGroupObject(coNr1).value(value, DPT_Switch);
