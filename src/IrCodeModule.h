@@ -313,24 +313,23 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 {
 	uint8_t *buffer = new uint8_t[9] {
 		data->protocol,
-		data->address >> 8,
-		data->address & 0xFF,
-		data->command >> 8,
-		data->command & 0xFF,
-		data->numberOfBits >> 8,
-		data->numberOfBits & 0xFF,
-		data->extra >> 8,
-		data->extra & 0xFF,
+		(uint8_t)(data->address >> 8),
+		(uint8_t)(data->address & 0xFF),
+		(uint8_t)(data->command >> 8),
+		(uint8_t)(data->command & 0xFF),
+		(uint8_t)(data->numberOfBits >> 8),
+		(uint8_t)(data->numberOfBits & 0xFF),
+		(uint8_t)(data->extra >> 8),
+		(uint8_t)(data->extra & 0xFF),
 	};
-
-	logInfoP("%.2X", buffer[3]);
-	logInfoP("%.2X", buffer[4]);
 
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
 	logInfoP("Address %.4X", address);
 	knx.platform().writeNonVolatileMemory(address, buffer, 9);
+	logInfoP("commit");
 	knx.platform().commitNonVolatileMemory();
 
+	logInfoP("clean");
 	delete[] buffer;
 }
 
