@@ -336,5 +336,12 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 //will be called once a KO received a telegram
 void IrCodeModule::processInputKo(GroupObject& iKo)
 {
-    
+	logInfoP("got KO %i", iKo.asap());
+    int index = floor(iKo.asap() / 2);
+	logInfoP("is index %i", index);
+
+	IRData *data = this->read(index);
+	this->print(data, index);
+	IRsend *send = new IRsend(9);
+	send->write(data);
 }
