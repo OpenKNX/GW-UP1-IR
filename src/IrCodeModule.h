@@ -337,7 +337,7 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 void IrCodeModule::processInputKo(GroupObject& iKo)
 {
 	logInfoP("got KO %i", iKo.asap());
-    int index = floor(iKo.asap() / 2);
+    int index = floor((iKo.asap() - 1) / 2);
 	logInfoP("is index %i", index);
 
 	IRData *data = this->read(index);
