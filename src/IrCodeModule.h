@@ -28,6 +28,7 @@ class IrCodeModule : public OpenKNX::Module
 		void executeCode(int index);
 		bool isEnabled = false;
 		long lastCode = 0;
+		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 };
 
 //Give your Module a name
@@ -73,7 +74,6 @@ void IrCodeModule::loop()
 		logInfoP("Got Serial Byte %.2X", b1);
 		if(b1 == 0xAB)
 		{
-			logInfoP("Got AB");
 			b1 = Serial2.read();
 			logInfoP("Got %.2X", b1);
 
@@ -97,7 +97,9 @@ void IrCodeModule::loop()
 
 				case 0xFF:
 				{
+					logInfoP("reading IR-Code");
 					b1 = Serial2.read();
+					logInfoP("index %i", b1);
 					IRData *data = new IRData();
 					data->protocol = (decode_type_t)Serial2.read();
 					int temp = Serial2.read() << 8;
@@ -311,6 +313,7 @@ IRData* IrCodeModule::read(uint8_t index)
 
 void IrCodeModule::write(uint8_t index, IRData *data)
 {
+	logInfoP("create buffer");
 	uint8_t *buffer = new uint8_t[9] {
 		data->protocol,
 		(uint8_t)(data->address >> 8),
@@ -323,6 +326,7 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 		(uint8_t)(data->extra & 0xFF),
 	};
 
+	logInfoP("calc addres");
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
 	logInfoP("Address %.4X", address);
 	knx.platform().writeNonVolatileMemory(address, buffer, 9);
@@ -331,6 +335,7 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 
 	logInfoP("clean");
 	delete[] buffer;
+	logInfoP("done");
 }
 
 //will be called once a KO received a telegram
@@ -344,4 +349,14 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 	this->print(data, index);
 	IRsend *send = new IRsend(9);
 	send->write(data);
+}
+
+bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
+{
+	logInfoP("Got FunctionProperty:");
+	logIndentUp();
+	logInfoP("objIdx: %i", objectIndex);
+	logInfoP("propId: %i", propertyId);
+	logIndentDown();
+	return true;
 }
