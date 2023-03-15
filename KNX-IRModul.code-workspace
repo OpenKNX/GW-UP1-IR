@@ -21,7 +21,9 @@
 			"iterator": "cpp",
 			"string_view": "cpp",
 			"cmath": "cpp",
-			"complex": "cpp"
+			"complex": "cpp",
+			"regex": "cpp",
+			"ranges": "cpp"
 		}
 	}
 }

@@ -29,6 +29,7 @@ class IrCodeModule : public OpenKNX::Module
 		bool isEnabled = false;
 		long lastCode = 0;
 		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
+		bool processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 };
 
 //Give your Module a name
@@ -358,5 +359,15 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 	logInfoP("objIdx: %i", objectIndex);
 	logInfoP("propId: %i", propertyId);
 	logIndentDown();
-	return true;
+	return false;
+}
+
+bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
+{
+	logInfoP("Got FunctionPropertyState:");
+	logIndentUp();
+	logInfoP("objIdx: %i", objectIndex);
+	logInfoP("propId: %i", propertyId);
+	logIndentDown();
+	return false;
 }
