@@ -19,7 +19,10 @@ class IrCodeModule : public OpenKNX::Module
 		// uint16_t flashSize() override;
 
 	private:
+		uint _state = 0;
 		IRrecv *rec;
+		IRData *_data;
+		uint8_t _index;
 		IRData* read(uint8_t index);
 		void write(uint8_t index, IRData *data);
 		void print(IRData *data, uint8_t index);
@@ -63,13 +66,83 @@ void IrCodeModule::setup()
 
 void IrCodeModule::loop()
 {
-    if(rec->decode())
+	switch(_state)
 	{
-		rec->resume();
-		handleCode();
+		case 0:
+		{
+			if(rec->decode())
+			{
+				rec->resume();
+				handleCode();
+			}
+			break;
+		}
+
+		case 1:
+		{
+			if(rec->decode())
+			{
+				rec->resume();
+				if(rec->decodedIRData.protocol == 0 || rec->decodedIRData.address == 0 || rec->decodedIRData.numberOfBits == 0) return;
+
+				_data = new IRData();
+				_data->protocol = rec->decodedIRData.protocol;
+				_data->address = rec->decodedIRData.address;
+				_data->command = rec->decodedIRData.command;
+				_data->numberOfBits = rec->decodedIRData.numberOfBits;
+				_data-> flags = rec->decodedIRData.flags;
+				_data->extra = rec->decodedIRData.extra;
+
+				_state = 2;
+				rec->resume();
+			}
+			break;
+		}
+
+		case 2:
+		{
+			if(rec->decode())
+			{
+				rec->resume();
+				if(rec->decodedIRData.protocol == 0 || rec->decodedIRData.address == 0 || rec->decodedIRData.numberOfBits == 0) return;
+
+				if(rec->decodedIRData.protocol != _data->protocol)
+				{
+					logErrorP("Protokoll unterschiedlich");
+					_state = 3;
+					return;
+				}
+				if(rec->decodedIRData.address != _data->address)
+				{
+					logErrorP("Adresse unterschiedlich");
+					_state = 3;
+					return;
+				}
+				if(rec->decodedIRData.numberOfBits != _data->numberOfBits)
+				{
+					logErrorP("NumberOfBits unterschiedlich");
+					_state = 3;
+					return;
+				}
+				if(rec->decodedIRData.command != _data->command)
+				{
+					logErrorP("Command unterschiedlich");
+					_state = 3;
+					return;
+				}
+
+				this->write(_index, _data);
+				this->print(_data, _index);
+
+				delete _data;
+
+				_state = 0;
+			}
+			break;
+		}
 	}
 
-	if(Serial2.available())
+	if(Serial2.available() && false)
 	{
 		byte b1 = Serial2.read();
 		logInfoP("Got Serial Byte %.2X", b1);
@@ -142,13 +215,13 @@ void IrCodeModule::handleCode()
 	if(lastCode + 500 > millis()) return;
 	if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
 	lastCode = millis();
-	this->print(&rec->decodedIRData, -1);
 
 	for(int i = 0; i < CODE_COUNT; i++)
 	{
 		if(compare(i))
 		{
 			logInfoP("Code wurde gefunden: %i", i);
+			this->print(&rec->decodedIRData, -1);
 
 			long offset = mod_ir_para[i] + PARAM_ir_inOutType;
 			int type = (knx.paramByte(offset) & PARAM_ir_inOutType_Mask) >> PARAM_ir_inOutType_Shift;
@@ -164,6 +237,7 @@ void IrCodeModule::handleCode()
 		}
 	}
 
+	this->print(&rec->decodedIRData, -1);
 	logErrorP("Code wurde nicht gefunden");
 	Serial2.write(0xAB);
 	Serial2.write(0xFC);
@@ -346,10 +420,10 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
     int index = floor((iKo.asap() - 1) / 2);
 	logInfoP("is index %i", index);
 
-	IRData *data = this->read(index);
-	this->print(data, index);
-	IRsend *send = new IRsend(9);
-	send->write(data);
+	//IRData *data = this->read(index);
+	//this->print(data, index);
+	//IRsend *send = new IRsend(9);
+	//send->write(data);
 }
 
 bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
@@ -370,16 +444,43 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 	}
 	SERIAL_DEBUG.println();
 
-	resultData[0] = 0x03;
-	resultData[1] = 0xAB;
-	resultLength = 2;
+	if(objectIndex != 0 || propertyId != 242) return false;
 
+	switch(data[1])
+	{
+		case 0x01:
+		{
+			logInfoP("Learn index %i", data[0]);
+			_index = data[0];
+			_state = 1;
+			resultData[0] = 0x00;
+			resultLength = 1;
+			break;
+		}
+
+		case 0x02:
+		{
+			logInfoP("Delete index %i", data[0]);
+			resultData[0] = 0x02;
+			resultLength = 1;
+			break;
+		}
+
+		default:
+		{
+			logInfoP("Unbekanntes Kommando");
+			resultData[0] = 0xFF;
+			resultLength = 1;
+			break;
+		}
+	}
+	
 	return true;
 }
 
 bool IrCodeModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
 {
-	logInfoP("Got FunctionPropertyState:");
+	/*logInfoP("Got FunctionPropertyState:");
 	logIndentUp();
 	logInfoP("objIdx: %i", objectIndex);
 	logInfoP("propId: %i", propertyId);
@@ -390,11 +491,16 @@ bool IrCodeModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t pro
 	SERIAL_DEBUG.print("): ");
 	for(int i = 0; i < length; i++)
 		SERIAL_DEBUG.print(data[i], HEX);
-	SERIAL_DEBUG.println();
+	SERIAL_DEBUG.println();*/
 
-	resultData[0] = 0x03;
-	resultData[1] = 0xAC;
-	resultLength = 2;
+	if(objectIndex == 0 && propertyId == 242)
+	{
+		resultData[0] = _state;
+		resultLength = 1;
+		if(_state == 3)
+			_state = 0;
+		return true;
+	}
 
-	return true;
+	return false;
 }
