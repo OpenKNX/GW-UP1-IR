@@ -461,8 +461,14 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 		case 0x02:
 		{
 			logInfoP("Delete index %i", data[0]);
-			resultData[0] = 0x02;
+			resultData[0] = 0x00;
 			resultLength = 1;
+			_data = new IRData();
+			_data->protocol = decode_type_t::UNKNOWN;
+			_data->address = 0;
+			_data->command = 0;
+			this->write(data[0], _data);
+			delete data;
 			break;
 		}
 
