@@ -96,6 +96,7 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             picoOTA.commit();
             LittleFS.end();
             resultLength = 0;
+            _rebootRequested = true;
             return true;
         }
     }
