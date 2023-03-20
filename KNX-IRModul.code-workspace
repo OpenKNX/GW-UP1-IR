@@ -23,7 +23,8 @@
 			"cmath": "cpp",
 			"complex": "cpp",
 			"regex": "cpp",
-			"ranges": "cpp"
+			"ranges": "cpp",
+			"new": "cpp"
 		}
 	}
 }
