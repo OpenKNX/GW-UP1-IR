@@ -19,7 +19,7 @@ class UpdateModule : public OpenKNX::Module
         uint _position;
         uint _lastPosition;
         long _lastInfo = 0;
-        bool _rebootRequested = false;
+        long _rebootRequested = 0;
         bool _isDownloading = false;
 		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 		bool processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
@@ -42,13 +42,13 @@ const std::string UpdateModule::version()
 
 void UpdateModule::loop()
 {
-    if(_rebootRequested)
+    if(_rebootRequested && _rebootRequested + 2000 < millis())
         rp2040.reboot();
 
-    if(delayCheck(_lastInfo, INFO_INTERVAL))
+    if(_isDownloading && delayCheck(_lastInfo, INFO_INTERVAL))
     {
         _lastInfo = millis();
-        logInfoP("Progress: %i\% - %i B/s", (_position / _size) * 100, (_position - _lastPosition) / (INFO_INTERVAL / 1000));
+        logInfoP("Progress: %.2f %% - %i B/s", (_position * 100.0 ) / _size, (_position - _lastPosition) / (INFO_INTERVAL / 1000));
         _lastPosition = _position;
     }
 }
@@ -62,10 +62,10 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
         case 243:
         {
             logInfoP("Starting Firmware Update");
-            _size = data[0] << 24;
-            _size |= data[1] << 16;
-            _size |= data[2] << 8;
-            _size |= data[3];
+            _size = data[3] << 24;
+            _size |= data[2] << 16;
+            _size |= data[1] << 8;
+            _size |= data[0];
             _position = 0;
             _lastInfo = millis();
             _lastPosition = 0;
@@ -83,6 +83,7 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             {
                 resultData[0] = 0x01;
                 resultLength = 1;
+                logErrorP("Wrong type");
                 return true;
             }
             _position += length;
@@ -108,8 +109,14 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             picoOTA.commit();
             LittleFS.end();
             resultLength = 0;
-            _rebootRequested = true;
+            _rebootRequested = millis();
             return true;
         }
     }
+    return false;
+}
+
+bool UpdateModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
+{
+    return false;
 }

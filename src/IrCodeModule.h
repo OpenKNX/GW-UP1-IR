@@ -428,22 +428,6 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 
 bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
 {
-	logInfoP("Got FunctionProperty:");
-	logIndentUp();
-	logInfoP("objIdx: %i", objectIndex);
-	logInfoP("propId: %i", propertyId);
-	logIndentDown();
-
-	SERIAL_DEBUG.print("DATA (");
-	SERIAL_DEBUG.print(length);
-	SERIAL_DEBUG.print("): ");
-	for(int i = 0; i < length; i++)
-	{
-		if(data[i] < 128) SERIAL_DEBUG.print("0");
-		SERIAL_DEBUG.print(data[i], HEX);
-	}
-	SERIAL_DEBUG.println();
-
 	if(objectIndex != 0 || propertyId != 242) return false;
 
 	switch(data[1])
@@ -486,19 +470,6 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 
 bool IrCodeModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
 {
-	/*logInfoP("Got FunctionPropertyState:");
-	logIndentUp();
-	logInfoP("objIdx: %i", objectIndex);
-	logInfoP("propId: %i", propertyId);
-	logIndentDown();
-	
-	SERIAL_DEBUG.print("DATA (");
-	SERIAL_DEBUG.print(length);
-	SERIAL_DEBUG.print("): ");
-	for(int i = 0; i < length; i++)
-		SERIAL_DEBUG.print(data[i], HEX);
-	SERIAL_DEBUG.println();*/
-
 	if(objectIndex == 0 && propertyId == 242)
 	{
 		resultData[0] = _state;
