@@ -19,6 +19,7 @@ class UpdateModule : public OpenKNX::Module
         uint _lastPosition;
         long _lastInfo = 0;
         bool _rebootRequested = false;
+        bool _isDownloading = false;
 		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 		bool processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 };
@@ -42,6 +43,13 @@ void UpdateModule::loop()
 {
     if(_rebootRequested)
         rp2040.reboot();
+
+    if(delayCheck(_lastInfo, INFO_INTERVAL))
+    {
+        _lastInfo = millis();
+        logInfoP("Progress: %i\% - %i B/s", (_position / _size) * 100, (_position - _lastPosition) / (INFO_INTERVAL / 1000));
+        _lastPosition = _position;
+    }
 }
 
 bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
@@ -64,6 +72,7 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             LittleFS.begin();
             _file = LittleFS.open("firmware.bin", "w");
             resultLength = 0;
+            _isDownloading = true;
             return true;
         }
         
@@ -77,19 +86,13 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             }
             _position += length;
 
-            if(delayCheck(_lastInfo, INFO_INTERVAL))
-            {
-                _lastInfo = millis();
-                logInfoP("Progress: %i\% - %i B/s", (_position / _size) * 100, (_position - _lastPosition) / (INFO_INTERVAL / 1000));
-                _lastPosition = _position;
-            }
-
             resultLength = 0;
             return true;
         }
         
         case 245:
         {
+            _isDownloading = false;
             _file.close();
             picoOTA.begin();
             picoOTA.addFile("firmware.bin");
