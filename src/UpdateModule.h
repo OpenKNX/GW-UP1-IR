@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <PicoOTA.h>
 #include "OpenKNX.h"
+#include "FastCRC.h"
 
 #define INFO_INTERVAL 10000
 
@@ -86,7 +87,15 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             }
             _position += length;
 
-            resultLength = 0;
+            resultData[0] = 0x00;
+
+            FastCRC16 crc16;
+            uint16_t crc = crc16.modbus(data, length);
+
+            resultData[1] = crc >> 8;
+            resultData[2] = crc & 0xFF;
+
+            resultLength = 3;
             return true;
         }
         
