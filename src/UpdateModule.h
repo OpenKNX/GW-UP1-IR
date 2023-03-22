@@ -21,7 +21,7 @@ class UpdateModule : public OpenKNX::Module
         long _lastInfo = 0;
         long _rebootRequested = 0;
         bool _isDownloading = false;
-        uint _errorCount;
+        int _errorCount = 0;
 		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 		bool processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 };
@@ -50,18 +50,21 @@ void UpdateModule::loop()
     {
         _lastInfo = millis();
         logInfoP("Progress: %.2f %% - %i B/s", (_position * 100.0 ) / _size, (_position - _lastPosition) / (INFO_INTERVAL / 1000));
-        _lastPosition = _position;
-
+       
         if(_position - _lastPosition == 0)
             _errorCount++;
+        else
+            _errorCount = 0;
 
         if(_errorCount > 2)
         {
-            logErrorP("Canceling Update....");
+            logErrorP("Aborting Update.... %i", _errorCount);
             _isDownloading = false;
             _file.close();
             LittleFS.end();
         }
+        
+        _lastPosition = _position;
     }
 }
 
@@ -92,6 +95,14 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
         
         case 244:
         {
+            if(!_isDownloading)
+            {
+                resultData[0] = 0x02;
+                resultLength = 1;
+                logErrorP("Download aborted");
+                return true;
+            }
+
             if(_file.write(data, length) != length)
             {
                 resultData[0] = 0x01;
