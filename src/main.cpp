@@ -14,6 +14,8 @@ Used propertyIndexes:
 
 void setup()
 {
+    Serial2.setTX(4);
+    Serial2.setRX(5);
 	const uint8_t firmwareRevision = 0;
     openknx.init(firmwareRevision);
     openknx.addModule(1, new IrCodeModule());

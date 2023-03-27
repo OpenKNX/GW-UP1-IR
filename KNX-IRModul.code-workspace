@@ -8,6 +8,9 @@
 		},
 		{
 			"path": ".pio/libdeps/pico/OGM-Common"
+		},
+		{
+			"path": ".pio/libdeps/debug/IRremote"
 		}
 	],
 	"settings": {

@@ -1,6 +1,6 @@
 #define PROG_LED_PIN_ACTIVE_ON HIGH
 #define PROG_LED_PIN PIN_LED
-#define PROG_BUTTON_PIN 5
+#define PROG_BUTTON_PIN 15
 
 #define KNX_UART_TX_PIN 0
 #define KNX_UART_RX_PIN 1
