@@ -65,6 +65,16 @@ void UpdateModule::loop()
         }
         
         _lastPosition = _position;
+
+        if(_position - _lastPosition == 0)
+            _errorCount++;
+
+        if(_errorCount > 3)
+        {
+            logErrorP("Aborting Update...");
+            _isDownloading = false;
+            _file.close();
+        }
     }
 }
 
@@ -86,6 +96,7 @@ bool UpdateModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
             _lastPosition = 0;
             logInfoP("File Size: %i", _size);
             LittleFS.begin();
+            LittleFS.format();
             _file = LittleFS.open("firmware.bin", "w");
             resultLength = 0;
             _isDownloading = true;
