@@ -6,7 +6,9 @@
 
 /*
 Used propertyIndexes:
+IrCodeModule
  - 242 Learn/Delete Code
+UpdateModule
  - 243 Update start
  - 244 Update data
  - 245 Update end
