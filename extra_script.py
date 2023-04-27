@@ -5,16 +5,20 @@ import shutil
 import re
 
 print("Copying hardware.h")
-shutil.copyfile('include/hardware.h', '.pio/libdeps/' + env["PIOENV"] + '/OGM-Common/include/hardware.h')
+shutil.copyfile(
+    env["PROJECT_DIR"] + '/include/hardware.h',
+    env["PROJECT_LIBDEPS_DIR"] + '/' + env["PIOENV"] + '/OGM-Common/include/hardware.h')
 print("Copying knxprod.h")
-shutil.copyfile('include/knxprod.h', '.pio/libdeps/' + env["PIOENV"] + '/OGM-Common/include/knxprod.h')
+shutil.copyfile(
+    env["PROJECT_DIR"] + '/include/knxprod.h',
+    env["PROJECT_LIBDEPS_DIR"] + '/' + env["PIOENV"] + '/OGM-Common/include/knxprod.h')
 
 #print(env.Dump())
 
 def post_program_action(source, target, env):
-    print("Building ", source[0].get_path()[0:-4] + "_ew.uf2")
-    
-    with open(env["PROJECT_INCLUDE_DIR"] + "\\knxprod.h", 'r') as knxprod:
+    print("Changing ", source[0].get_path()[0:-4] + ".uf2")
+
+    with open(env["PROJECT_LIBDEPS_DIR"] + '/' + env["PIOENV"] + "/OGM-Common/include/knxprod.h", 'r') as knxprod:
         content = knxprod.read(1000)
 
     m = re.search("#define MAIN_OpenKnxId 0x([0-9A-Fa-f]{2})", content)
@@ -39,9 +43,9 @@ def post_program_action(source, target, env):
         barray=bytearray(orig_file.read())
         barray[9] = barray[9] | 0x80
         barray[288] = 8 #Tag Size
-        barray[289] = 1 #Type
-        barray[290] = 1 #Type
-        barray[291] = 1 #Type
+        barray[289] = 0x4B #Type
+        barray[290] = 0x4E #Type
+        barray[291] = 0x58 #Type
         barray[292] = int(openknxid, 16) #Data
         barray[293] = int(appnumber, 16) #Data
         barray[294] = int(appversion, 16) #Data
