@@ -15,7 +15,7 @@ def post_program_action(source, target, env):
     print("Building ", source[0].get_path()[0:-4] + "_ew.uf2")
     
     with open(env["PROJECT_INCLUDE_DIR"] + "\\knxprod.h", 'r') as knxprod:
-        content = knxprod.read(400)
+        content = knxprod.read(1000)
 
     m = re.search("#define MAIN_OpenKnxId 0x([0-9A-Fa-f]{2})", content)
     openknxid = m.group(1)
