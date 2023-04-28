@@ -4,6 +4,7 @@ import gzip
 import shutil
 import re
 import os
+from platformio.proc import exec_command
 
 print("Copying hardware.h")
 shutil.copyfile(
@@ -57,10 +58,51 @@ def post_program_action(source, target, env):
 
     
             
-def check_flash(source, target, env):
+def post_progsize(source, target, env):
+    def _configure_defaults():
+        env.Replace(
+            SIZECHECKCMD="$SIZETOOL -B -d $SOURCES",
+            SIZEPROGREGEXP=r"^(\d+)\s+(\d+)\s+\d+\s",
+            SIZEDATAREGEXP=r"^\d+\s+(\d+)\s+(\d+)\s+\d+",
+        )
+
+    def _get_size_output():
+        cmd = env.get("SIZECHECKCMD")
+        if not cmd:
+            return None
+        if not isinstance(cmd, list):
+            cmd = cmd.split()
+        cmd = [arg.replace("$SOURCES", str(source[0])) for arg in cmd if arg]
+        sysenv = os.environ.copy()
+        sysenv["PATH"] = str(env["ENV"]["PATH"])
+        result = exec_command(env.subst(cmd), env=sysenv)
+        if result["returncode"] != 0:
+            return None
+        return result["out"].strip()
+
+    def _calculate_size(output, pattern):
+        if not output or not pattern:
+            return -1
+        size = 0
+        regexp = re.compile(pattern)
+        for line in output.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            match = regexp.search(line)
+            if not match:
+                continue
+            size += sum(int(value) for value in match.groups())
+        return size
+
+    if not env.get("SIZECHECKCMD") and not env.get("SIZEPROGREGEXP"):
+        _configure_defaults()
+    output = _get_size_output()
+    program_size = _calculate_size(output, env.get("SIZEPROGREGEXP"))
+    print("size: " + str(program_size))
+
     flash_start = 268435456 #0x10000000 got from uf2
     flash_end = flash_start + int(projenv["PICO_FLASH_LENGTH"])
-    bin_size = os.stat(source[0].get_path()).st_size
     openknx_start = -1
 
     for x in projenv["CPPDEFINES"]:
@@ -81,7 +123,7 @@ def check_flash(source, target, env):
         openknx_end = openknx_start + openknx_end
 
     print("Following bytes are free:")
-    print("  Flash -> Parameters     " + str(knx_start - (flash_start + bin_size)))   
+    print("  Flash -> Parameters     " + str(knx_start - (flash_start + program_size)))   
 
     file_start = -1
     file_start = int(env["FS_START"]) #0x1017F000 -> 270004224
@@ -94,13 +136,9 @@ def check_flash(source, target, env):
         print("  Parameters -> Flash End  " + str(flash_end - knx_end))
 
 
-    print("knx start  " + str(knx_start))
-    print("knx end    " + str(knx_end))
-    print("oknx start " + str(openknx_start))
-            
 
 
 env.AddPostAction("buildprog", post_program_action)
 
 if projenv["BOARD_MCU"] == "rp2040":
-    env.AddPostAction("buildprog", check_flash)
+    env.AddPostAction("checkprogsize", post_progsize)
