@@ -1,0 +1,8 @@
+searches = ["\.ARM\.exidx", "\.rodata", "\.text"]
+        for search in searches:
+            m = re.search(search + "\s+(\d+)\s+(\d+)", str(result))
+            if m is not None:
+                print(m)
+                size += int(m.group(1))
+                size += int(m.group(2))
+                break

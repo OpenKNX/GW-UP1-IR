@@ -24,6 +24,7 @@ void setup()
     openknx.addModule(2, new UpdateModule());
     openknx.setup();
 
+    logHexInfo("Test", (uint8_t*)XIP_BASE + 0x00034664 - 10, 20);
 }
 
 void loop()
