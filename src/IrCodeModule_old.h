@@ -164,7 +164,7 @@ void IrCodeModule::handleCode()
 		{
 			_index = i;
 			logInfoP("Code wurde gefunden: %i", i);
-			int type = ParamIR_inOutTypeIndex(i);
+			int type = GETPARAM_ir_inOutType(i);
 			if(type == 1)
 			{
 				executeCode();
@@ -199,19 +199,22 @@ void IrCodeModule::checkPress()
 				logInfoP("Nur Schalten");
 				_pressState = 0;
 				
-				if(ParamIR_inDimmDirectionIndex(_index))
-					KoIR_co_n2Index(_index).value(false, DPT_Switch);
+				int coNr2 = COMOBJ_ir_co_n2 + mod_ir_coms[_index];
+				if(GETPARAM_ir_inDimmDirection(_index))
+					knx.getGroupObject(coNr2).value(false, DPT_Switch);
 				else
-					KoIR_co_n2Index(_index).value(true, DPT_Switch);
+					knx.getGroupObject(coNr2).value(true, DPT_Switch);
 				}
 			break;
 		}
 
 		case 2:
 		{
-			bool value = ParamIR_inDimmDirectionIndex(_index);
-			KoIR_co_n1Index(_index).valueNoSend(!value, Dpt(3,7,0));
-			KoIR_co_n1Index(_index).value((uint8_t)0b001, Dpt(3,7,1));
+			int coNr1 = COMOBJ_ir_co_n1 + mod_ir_coms[_index];
+
+			bool value = GETPARAM_ir_inDimmDirection(_index);
+			knx.getGroupObject(coNr1).valueNoSend(!value, Dpt(3,7,0));
+			knx.getGroupObject(coNr1).value((uint8_t)0b001, Dpt(3,7,1));
 			logInfoP("Dimmen gestartet");
 
 			_pressState = 3;
@@ -223,7 +226,8 @@ void IrCodeModule::checkPress()
 			if((_pressInterval > 1 && _lastPress + _pressInterval < millis())
 				|| (_pressInterval == 0 && _lastPress + 300 < millis()))
 			{
-				KoIR_co_n1Index(_index).value((uint8_t)0x00, DPT_DecimalFactor); //Dimm Stop
+				int coNr1 = COMOBJ_ir_co_n1 + mod_ir_coms[_index];
+				knx.getGroupObject(coNr1).value((uint8_t)0x00, DPT_DecimalFactor); //Dimm Stop
 				logInfoP("Dimmen beenden");
 				_pressState = 0;
 			}
@@ -234,36 +238,39 @@ void IrCodeModule::checkPress()
 
 void IrCodeModule::executeCode()
 {
-	int type = ParamIR_inTypeIndex(_index);
+	int type = GETPARAM_ir_inType(_index);
 	switch(type)
 	{
 		case 0:
 		{
 			logInfoP("Execute Switch");
-			int sw = ParamIR_inSwitchIndex(_index);
+			int sw = GETPARAM_ir_inSwitch(_index);
+
+			int coNr1 = 1 + mod_ir_coms[_index];
+			int coNr2 = 2 + mod_ir_coms[_index];
 
 			switch(sw)
 			{
 				case 1:
 					logInfoP("on");
-					KoIR_co_n1Index(_index).value(true, DPT_Switch);
-					KoIR_co_n2Index(_index).valueNoSend(true, DPT_Switch);
+					knx.getGroupObject(coNr1).value(true, DPT_Switch);
+					knx.getGroupObject(coNr2).valueNoSend(true, DPT_Switch);
 					break;
 
 				case 2:
 					logInfoP("off");
-					KoIR_co_n1Index(_index).value(false, DPT_Switch);
-					KoIR_co_n2Index(_index).valueNoSend(false, DPT_Switch);
+					knx.getGroupObject(coNr1).value(false, DPT_Switch);
+					knx.getGroupObject(coNr2).valueNoSend(false, DPT_Switch);
 					break;
 
 				case 0:
 					logInfoP("toggle");
-					KNXValue val = KoIR_co_n2Index(_index).value(DPT_Switch);
+					KNXValue val = knx.getGroupObject(coNr2).value(DPT_Switch);
 					logInfoP("State is %i", (bool)val);
 					bool value = !val;
 					logInfoP("Set state %i", value);
-					KoIR_co_n1Index(_index).value(value, DPT_Switch);
-					KoIR_co_n2Index(_index).valueNoSend(value, DPT_Switch);
+					knx.getGroupObject(coNr1).value(value, DPT_Switch);
+					knx.getGroupObject(coNr2).valueNoSend(value, DPT_Switch);
 					break;
 			}
 			break;
@@ -272,18 +279,20 @@ void IrCodeModule::executeCode()
 		case 1:
 		{
 			logInfoP("Execute Value");
-			uint8_t sw = ParamIR_inValueIndex(_index);
+			uint8_t sw = GETPARAM_ir_inValue(_index);
 
-			KoIR_co_n1Index(_index).value(sw, Dpt(5,5));
+			int coNr1 = 1 + mod_ir_coms[_index];
+			knx.getGroupObject(coNr1).value(sw, Dpt(5,5));
 			break;
 		}
 		
 		case 2:
 		{
 			logInfoP("Execute Scene");
-			uint8_t sw = ParamIR_inSceneIndex(_index);
+			uint8_t sw = GETPARAM_ir_inScene(_index);
 			sw -= 1;
-			KoIR_co_n1Index(_index).value(sw, DPT_SceneNumber);
+			int coNr1 = 1 + mod_ir_coms[_index];
+			knx.getGroupObject(coNr1).value(sw, DPT_SceneNumber);
 			break;
 		}
 		
@@ -298,7 +307,7 @@ void IrCodeModule::executeCode()
 			
 			if(_pressState == 0)
 			{
-				if(ParamIR_inDimmSwitchIndex(_index))
+				if(GETPARAM_ir_inDimmSwitch(_index))
 					_pressState = 1;
 				else
 					_pressState = 2;
@@ -319,12 +328,13 @@ void IrCodeModule::executeCode()
 		case 4:
 		{
 			logInfoP("Execute Color");
-			uint8_t *color = ParamIR_inColorIndex(_index);
+			uint8_t *color = GETPARAM_ir_inColor(_index);
 			logInfoP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
+			int coNr1 = COMOBJ_ir_co_n1 + mod_ir_coms[_index];
 			uint32_t xcolor = color[2];
 			xcolor |= color[1] << 8;
 			xcolor |= color[0] << 16;
-			KoIR_co_n1Index(_index).value(xcolor, DPT_Colour_RGB);
+			knx.getGroupObject(coNr1).value(xcolor, DPT_Colour_RGB);
 			break;
 		}
 		
@@ -425,19 +435,20 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
     int index = floor((iKo.asap() - 1) / 2);
 	logInfoP("is index %i", index);
 
-	int type = ParamIR_inOutTypeIndex(index);
+	long offset = mod_ir_para[index] + PARAM_ir_inOutType;
+	int type = GETPARAM_ir_inOutType(index);
 	if(type != 2)
 	{
 		logInfoP("KO ist nicht zum Empfangen gedacht");
 		return;
 	}
 
-	type = ParamIR_inOutTypeIndex(index);
+	type = GETPARAM_ir_outType(index);
 	switch(type)
 	{
 		case 0: //Switch
 		{
-			int stype = ParamIR_outSwitchIndex(index);
+			int stype = GETPARAM_ir_outSwitch(index);
 			switch(stype)
 			{
 				case 0: //Always

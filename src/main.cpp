@@ -3,6 +3,7 @@
 #include "OpenKNX.h"
 #include "IrCodeModule.h"
 #include "UpdateModule.h"
+//#include "FTPServer.h"
 
 /*
 Used propertyIndexes:
@@ -22,9 +23,10 @@ void setup()
     openknx.init(firmwareRevision);
     openknx.addModule(1, new IrCodeModule());
     openknx.addModule(2, new UpdateModule());
+    //openknx.addModule(3, new FtpServer());
     openknx.setup();
 
-    logHexInfo("Test", (uint8_t*)XIP_BASE + 0x00034664 - 10, 20);
+    //logHexInfo("Test", (uint8_t*)XIP_BASE + 0x00034664 - 10, 20);
 }
 
 void loop()
