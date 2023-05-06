@@ -152,7 +152,7 @@ void IrCodeModule::handleCode()
 {
 	if(_pressState > 1 && lastCode + 100 > millis()) return;
 	if(_pressState < 2 && lastCode + 500 > millis()) return;
-	//this->print(&rec->decodedIRData, -1);
+	this->print(&rec->decodedIRData, -1);
 	if(rec->decodedIRData.protocol == 0 && rec->decodedIRData.address == 0) return;
 	lastCode = millis();
 
