@@ -63,8 +63,10 @@ void IrCodeModule::setup()
     rec = new IRrecv(P29);
 	rec->enableIRIn();
 
-	send = new IRsend(P21);
-	send->begin(P21);
+	//send = new IRsend(P21);
+	//send->begin(P21);
+	send = new IRsend();
+	send->begin();
 	send->enableIROut(38);
 }
 
@@ -432,11 +434,12 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 		return;
 	}
 
-	type = ParamIR_inOutTypeIndex(index);
+	type = ParamIR_outTypeIndex(index);
 	switch(type)
 	{
 		case 0: //Switch
 		{
+			logInfoP("Switch");
 			int stype = ParamIR_outSwitchIndex(index);
 			switch(stype)
 			{
