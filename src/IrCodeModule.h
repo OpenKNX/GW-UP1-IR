@@ -4,6 +4,7 @@
 #include "IRremote.h"
 #include "pins.h"
 #include "knxprod.h"
+#include "LittleFS.h"
 
 class IrCodeModule : public OpenKNX::Module
 {
@@ -30,7 +31,7 @@ class IrCodeModule : public OpenKNX::Module
 		IRData* read(uint8_t index);
 		void write(uint8_t index, IRData *data);
 		void print(IRData *data, uint8_t index);
-		bool compare(uint8_t index);
+		bool compare(uint8_t index, uint8_t *data);
 		void handleCode();
 		void checkPress();
 		void executeCode();
@@ -68,6 +69,12 @@ void IrCodeModule::setup()
 	send = new IRsend();
 	send->begin();
 	send->enableIROut(38);
+	
+	if(!LittleFS.begin())
+	{
+		logErrorP("LittleFS.begin() failed");
+		return;
+	}
 }
 
 void IrCodeModule::loop()
@@ -160,15 +167,37 @@ void IrCodeModule::handleCode()
 
 	bool flag = false;
 
+	File f;	
+	if(!LittleFS.exists("/ircodes.txt"))
+	{
+		logErrorP("ircodes file doesn't exist");
+		return;
+	} else {
+		f = LittleFS.open("/ircodes.txt", "r+");
+		if(f.size() < CODE_COUNT*CODE_SIZE)
+		{
+			f.seek(f.size());
+			for(int i = 0; i < (CODE_COUNT*CODE_SIZE - f.size()); i++)
+				f.write((uint8_t)0x00);
+		}
+	}
+
 	for(int i = 0; i < CODE_COUNT; i++)
 	{
-		if(compare(i))
+		f.seek(i * CODE_SIZE);
+		uint8_t *data = new uint8_t[5];
+		f.readBytes((char *)data, 5);
+		bool compared = compare(i, data);
+		delete[] data;
+
+		if(compared)
 		{
 			_index = i;
 			logInfoP("Code wurde gefunden: %i", i);
 			int type = ParamIR_inOutTypeIndex(i);
 			if(type == 1)
 			{
+				f.close();
 				executeCode();
 				return;
 			}
@@ -177,6 +206,7 @@ void IrCodeModule::handleCode()
 		}
 	}
 
+	f.close();
 	if(flag) return;
 
 	this->print(&rec->decodedIRData, -1);
@@ -361,19 +391,16 @@ void IrCodeModule::print(IRData *data, uint8_t index)
 	logIndentDown();
 }
 
-bool IrCodeModule::compare(uint8_t index)
+bool IrCodeModule::compare(uint8_t index, uint8_t *data)
 {
-	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
+	if(rec->decodedIRData.protocol != (decode_type_t)data[0]) return false;
 
-	if(rec->decodedIRData.protocol != (decode_type_t)pointer[address]) return false;
-
-	int temp = pointer[address + 1] << 8;
-	temp = temp | pointer[address + 2];
+	int temp = data[1] << 8;
+	temp = temp | data[2];
 	if(rec->decodedIRData.address != temp) return false;
 
-	temp = pointer[address + 3] << 8;
-	temp = temp | pointer[address + 4];
+	temp = data[3] << 8;
+	temp = temp | data[4];
 	if(rec->decodedIRData.command != temp) return false;
 
 	return true;
@@ -381,10 +408,42 @@ bool IrCodeModule::compare(uint8_t index)
 
 IRData* IrCodeModule::read(uint8_t index)
 {
+	File f;
+	IRData *data = new IRData();
+	data->protocol = decode_type_t::UNKNOWN;
+	
+	if(!LittleFS.exists("/ircodes.txt"))
+	{
+		logErrorP("ircodes file doesn't exist");
+		return data;
+	} else {
+		f = LittleFS.open("/ircodes.txt", "r+");
+		if(f.size() < CODE_COUNT*CODE_SIZE)
+		{
+			f.seek(f.size());
+			for(int i = 0; i < (CODE_COUNT*CODE_SIZE - f.size()); i++)
+				f.write((uint8_t)0x00);
+		}
+	}
+
+	f.seek(index * CODE_SIZE);
+	data->protocol = (decode_type_t)f.read();
+	int temp = f.read() << 8;
+	data->address = temp | f.read();
+
+	temp = f.read() << 8;
+	data->command = temp | f.read();
+	temp = f.read() << 8;
+	data->numberOfBits = temp | f.read();
+	temp = f.read() << 8;
+	data->extra = temp | f.read();
+	return data;
+
+	/*
 	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
 	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
 	
-	IRData *data = new IRData();
+	
 
 	data->protocol = (decode_type_t)pointer[address];
 	int temp = pointer[address + 1] << 8;
@@ -397,11 +456,43 @@ IRData* IrCodeModule::read(uint8_t index)
 	temp = pointer[address + 7] << 8;
 	data->extra = temp | pointer[address + 8];
 	return data;
+	*/
 }
 
 void IrCodeModule::write(uint8_t index, IRData *data)
 {
-	uint8_t *buffer = new uint8_t[9] {
+	File f;
+	if(!LittleFS.exists("/ircodes.txt"))
+	{
+		f = LittleFS.open("/ircodes.txt", "w+");
+		for(int i = 0; i < CODE_COUNT*CODE_SIZE; i++)
+			f.write((uint8_t)0x00);
+		f.flush();
+	} else {
+		f = LittleFS.open("/ircodes.txt", "r+");
+		if(f.size() < CODE_COUNT*CODE_SIZE)
+		{
+			f.seek(f.size());
+			for(int i = 0; i < (CODE_COUNT*CODE_SIZE - f.size()); i++)
+				f.write((uint8_t)0x00);
+		}
+	}
+
+	f.seek(index * CODE_SIZE);
+	f.write(data->protocol);
+	f.write((uint8_t)(data->address >> 8));
+	f.write((uint8_t)(data->address & 0xFF));
+	f.write((uint8_t)(data->command >> 8));
+	f.write((uint8_t)(data->command & 0xFF));
+	f.write((uint8_t)(data->numberOfBits >> 8));
+	f.write((uint8_t)(data->numberOfBits & 0xFF));
+	f.write((uint8_t)(data->extra >> 8));
+	f.write((uint8_t)(data->extra & 0xFF));
+
+	f.flush();
+	f.close();
+
+	/*uint8_t *buffer = new uint8_t[9] {
 		data->protocol,
 		(uint8_t)(data->address >> 8),
 		(uint8_t)(data->address & 0xFF),
@@ -417,7 +508,7 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 	knx.platform().writeNonVolatileMemory(address, buffer, 9);
 	knx.platform().commitNonVolatileMemory();
 
-	delete[] buffer;
+	delete[] buffer;*/
 }
 
 //will be called once a KO received a telegram
