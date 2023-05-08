@@ -479,7 +479,7 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 	}
 
 	f.seek(index * CODE_SIZE);
-	f.write(data->protocol);
+	f.write((uint8_t)data->protocol);
 	f.write((uint8_t)(data->address >> 8));
 	f.write((uint8_t)(data->address & 0xFF));
 	f.write((uint8_t)(data->command >> 8));
