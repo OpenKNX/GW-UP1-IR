@@ -514,9 +514,8 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 //will be called once a KO received a telegram
 void IrCodeModule::processInputKo(GroupObject& iKo)
 {
-	logInfoP("got KO %i", iKo.asap());
     int index = floor((iKo.asap() - 1) / 2);
-	logInfoP("is index %i", index);
+	logInfoP("got KO %i is index %i", iKo.asap(), index);
 
 	int type = ParamIR_inOutTypeIndex(index);
 	if(type != 2)
@@ -562,22 +561,22 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 		
 		case 1: //Value
 		{
-
+			int svalue = ParamIR_outValueIndex(index);
+			int ivalue = (uint8_t)iKo.value(DPT_Scaling);
+			if(svalue == ivalue)
+				sendCode(index);
 			break;
 		}
 		
 		case 2: //Scene
 		{
-
+			int svalue = ParamIR_outSceneIndex(index) - 1;
+			uint8_t ivalue = (uint8_t)iKo.value(DPT_SceneNumber);
+			if(svalue == ivalue)
+				sendCode(index);
 			break;
 		}
 	}
-	
-
-	//IRData *data = this->read(index);
-	//this->print(data, index);
-	//IRsend *send = new IRsend(9);
-	//send->write(data);
 }
 
 bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
