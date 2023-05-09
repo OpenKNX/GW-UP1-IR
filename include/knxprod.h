@@ -9,7 +9,7 @@
 //--------------------Allgemein---------------------------
 #define MAIN_OpenKnxId 0xA4
 #define MAIN_ApplicationNumber 0x00
-#define MAIN_ApplicationVersion 0x11
+#define MAIN_ApplicationVersion 0x14
 #define MAIN_OrderNumber "TWB-IR.01" //may not work with multiple devices on same hardware or app on different hardware
 #define MAIN_ParameterSize 80
 #define MAIN_MaxKoNumber 47
@@ -78,32 +78,72 @@
 #define ParamIR_inColorTypeIndex(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 4), 2)
 // UnionOffset: 1, ParaOffset: 3, BitOffset: 2, Size: 1 Bit, Text: Ausgabe als
 #define ParamIR_inColorType knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 4), 2)
-#define IR_outType		0x0004
+#define IR_outType		0x0001
 #define IR_outType_Shift	6
 #define IR_outType_Mask	0x0003
-// UnionOffset: 1, ParaOffset: 3, Size: 2 Bit, Text: Funktion
-#define ParamIR_outTypeIndex(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 4)) >> IR_outType_Shift) & IR_outType_Mask))
-// UnionOffset: 1, ParaOffset: 3, Size: 2 Bit, Text: Funktion
-#define ParamIR_outType ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 4)) >> IR_outType_Shift) & IR_outType_Mask))
+// UnionOffset: 1, ParaOffset: 0, Size: 2 Bit, Text: Funktion
+#define ParamIR_outTypeIndex(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1)) >> IR_outType_Shift) & IR_outType_Mask))
+// UnionOffset: 1, ParaOffset: 0, Size: 2 Bit, Text: Funktion
+#define ParamIR_outType ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1)) >> IR_outType_Shift) & IR_outType_Mask))
 #define IR_outValue		0x0002
 // UnionOffset: 1, ParaOffset: 1, Size: 8 Bit (1 Byte), Text: Wert
 #define ParamIR_outValueIndex(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 2)))))
 // UnionOffset: 1, ParaOffset: 1, Size: 8 Bit (1 Byte), Text: Wert
 #define ParamIR_outValue ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 2)))))
-#define IR_outScene		0x0002
-#define IR_outScene_Shift	2
-#define IR_outScene_Mask	0x003F
-// UnionOffset: 1, ParaOffset: 1, Size: 6 Bit, Text: Szenennummer
-#define ParamIR_outSceneIndex(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 2)) >> IR_outScene_Shift) & IR_outScene_Mask))
-// UnionOffset: 1, ParaOffset: 1, Size: 6 Bit, Text: Szenennummer
-#define ParamIR_outScene ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 2)) >> IR_outScene_Shift) & IR_outScene_Mask))
-#define IR_outSwitch		0x0001
+#define IR_outSwitch		0x0002
 #define IR_outSwitch_Shift	6
 #define IR_outSwitch_Mask	0x0003
-// UnionOffset: 1, ParaOffset: 0, Size: 2 Bit, Text: Senden bei
-#define ParamIR_outSwitchIndex(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1)) >> IR_outSwitch_Shift) & IR_outSwitch_Mask))
-// UnionOffset: 1, ParaOffset: 0, Size: 2 Bit, Text: Senden bei
-#define ParamIR_outSwitch ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1)) >> IR_outSwitch_Shift) & IR_outSwitch_Mask))
+// UnionOffset: 1, ParaOffset: 1, Size: 2 Bit, Text: Senden bei
+#define ParamIR_outSwitchIndex(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 2)) >> IR_outSwitch_Shift) & IR_outSwitch_Mask))
+// UnionOffset: 1, ParaOffset: 1, Size: 2 Bit, Text: Senden bei
+#define ParamIR_outSwitch ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 2)) >> IR_outSwitch_Shift) & IR_outSwitch_Mask))
+#define IR_outScene1		0x0001
+#define IR_outScene1_Shift	-4
+#define IR_outScene1_Mask	0x003F
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 6, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene1Index(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1)) >> IR_outScene1_Shift) & IR_outScene1_Mask))
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 6, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene1 ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1)) >> IR_outScene1_Shift) & IR_outScene1_Mask))
+#define IR_outScene2		0x0002
+#define IR_outScene2_Mask	0x003F
+// UnionOffset: 1, ParaOffset: 1, BitOffset: 2, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene2Index(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 2))) & IR_outScene2_Mask))
+// UnionOffset: 1, ParaOffset: 1, BitOffset: 2, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene2 ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 2))) & IR_outScene2_Mask))
+#define IR_outScene3		0x0002
+#define IR_outScene3_Shift	-6
+#define IR_outScene3_Mask	0x003F
+// UnionOffset: 1, ParaOffset: 1, BitOffset: 8, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene3Index(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 2)) >> IR_outScene3_Shift) & IR_outScene3_Mask))
+// UnionOffset: 1, ParaOffset: 1, BitOffset: 8, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene3 ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 2)) >> IR_outScene3_Shift) & IR_outScene3_Mask))
+#define IR_outScene4		0x0003
+#define IR_outScene4_Shift	-2
+#define IR_outScene4_Mask	0x003F
+// UnionOffset: 1, ParaOffset: 2, BitOffset: 4, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene4Index(X) ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * X + 3)) >> IR_outScene4_Shift) & IR_outScene4_Mask))
+// UnionOffset: 1, ParaOffset: 2, BitOffset: 4, Size: 6 Bit, Text: Szenennummer
+#define ParamIR_outScene4 ((uint)((knx.paramByte((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 3)) >> IR_outScene4_Shift) & IR_outScene4_Mask))
+#define IR_outSceneActive1		0x0001
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 2, Size: 1 Bit, Text: Szene A
+#define ParamIR_outSceneActive1Index(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1), 2)
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 2, Size: 1 Bit, Text: Szene A
+#define ParamIR_outSceneActive1 knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1), 2)
+#define IR_outSceneActive2		0x0001
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 3, Size: 1 Bit, Text: Szene B
+#define ParamIR_outSceneActive2Index(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1), 3)
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 3, Size: 1 Bit, Text: Szene B
+#define ParamIR_outSceneActive2 knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1), 3)
+#define IR_outSceneActive3		0x0001
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 4, Size: 1 Bit, Text: Szene C
+#define ParamIR_outSceneActive3Index(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1), 4)
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 4, Size: 1 Bit, Text: Szene C
+#define ParamIR_outSceneActive3 knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1), 4)
+#define IR_outSceneActive4		0x0001
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 5, Size: 1 Bit, Text: Szene D
+#define ParamIR_outSceneActive4Index(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1), 5)
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 5, Size: 1 Bit, Text: Szene D
+#define ParamIR_outSceneActive4 knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1), 5)
 //!< Number: 1, Text: IR{{argChan}} <- {{0:}}, Function: Farbe
 #define IR_Koco_n1 1
 #define KoIR_co_n1Index(X) knx.getGroupObject(IR_KoOffset + IR_KoBlockSize * X + 1)

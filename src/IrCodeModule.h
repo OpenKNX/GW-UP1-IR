@@ -570,10 +570,43 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 		
 		case 2: //Scene
 		{
-			int svalue = ParamIR_outSceneIndex(index) - 1;
 			uint8_t ivalue = (uint8_t)iKo.value(DPT_SceneNumber);
-			if(svalue == ivalue)
-				sendCode(index);
+			if(ParamIR_outSceneActive1Index(index))
+			{
+				int svalue = ParamIR_outScene1Index(index) - 1;
+				if(svalue == ivalue)
+				{
+					sendCode(index);
+					break;
+				}
+			}
+			if(ParamIR_outSceneActive2Index(index))
+			{
+				int svalue = ParamIR_outScene2Index(index) - 1;
+				if(svalue == ivalue)
+				{
+					sendCode(index);
+					break;
+				}
+			}
+			if(ParamIR_outSceneActive3Index(index))
+			{
+				int svalue = ParamIR_outScene3Index(index) - 1;
+				if(svalue == ivalue)
+				{
+					sendCode(index);
+					break;
+				}
+			}
+			if(ParamIR_outSceneActive4Index(index))
+			{
+				int svalue = ParamIR_outScene4Index(index) - 1;
+				if(svalue == ivalue)
+				{
+					sendCode(index);
+					break;
+				}
+			}
 			break;
 		}
 	}
