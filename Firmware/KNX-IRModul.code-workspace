@@ -2,15 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": ".pio/libdeps/debug/OGM-Common"
-		},
-		{
-			"path": ".pio/libdeps/debug/IRremote"
-		},
-		{
-			"path": ".pio/libdeps/debug/knx"
 		}
 	],
 	"settings": {
