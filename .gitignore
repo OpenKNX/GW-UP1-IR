@@ -1,7 +1,5 @@
-.pio/*
-.vscode/*
-lib/*
+*/.pio/*
+*/.vscode/*
 
 #KiCad
-*-bak
-*.zip
+*/*-backups/*.zip
