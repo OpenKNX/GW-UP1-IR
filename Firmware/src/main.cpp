@@ -2,8 +2,7 @@
 #include <PicoOTA.h>
 #include "OpenKNX.h"
 #include "IrCodeModule.h"
-#include "UpdaterModule.h"
-#include "FtpServer.h"
+#include "FileTransferModule.h"
 
 void setup()
 {
@@ -12,8 +11,7 @@ void setup()
 	const uint8_t firmwareRevision = 0;
     openknx.init(firmwareRevision);
     openknx.addModule(1, new IrCodeModule());
-    openknx.addModule(2, new UpdaterModule());
-    openknx.addModule(3, new FtpServer());
+    openknx.addModule(2, new FileTransferModule());
     openknx.setup();
 }
 
