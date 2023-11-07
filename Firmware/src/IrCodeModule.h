@@ -54,7 +54,7 @@ const std::string IrCodeModule::name()
 //will be displayed in Command Infos 
 const std::string IrCodeModule::version()
 {
-    return "0.0dev";
+    return "";
 }
 
 //will be called once
@@ -69,12 +69,6 @@ void IrCodeModule::setup()
 	send = new IRsend();
 	send->begin();
 	send->enableIROut(38);
-	
-	if(!LittleFS.begin())
-	{
-		logErrorP("LittleFS.begin() failed");
-		return;
-	}
 }
 
 void IrCodeModule::loop()
@@ -193,7 +187,7 @@ void IrCodeModule::handleCode()
 		if(compared)
 		{
 			_index = i;
-			logInfoP("Code wurde gefunden: %i", i);
+			logDebugP("Code wurde gefunden: %i", i);
 			int type = ParamIR_inOutTypeIndex(i);
 			if(type == 1)
 			{
@@ -225,10 +219,9 @@ void IrCodeModule::checkPress()
 
 		case 1:
 		{
-			logDebugP("%i - %i", _lastPress + 700, millis());
 			if(_lastPress + 600 < millis())
 			{
-				logInfoP("Nur Schalten");
+				logDebugP("Nur Schalten");
 				_pressState = 0;
 				
 				if(ParamIR_inDimmDirectionIndex(_index))
@@ -244,7 +237,7 @@ void IrCodeModule::checkPress()
 			bool value = ParamIR_inDimmDirectionIndex(_index);
 			KoIR_co_n1Index(_index).valueNoSend(!value, Dpt(3,7,0));
 			KoIR_co_n1Index(_index).value((uint8_t)0b001, Dpt(3,7,1));
-			logInfoP("Dimmen gestartet");
+			logDebugP("Dimmen gestartet");
 
 			_pressState = 3;
 			break;
@@ -256,7 +249,7 @@ void IrCodeModule::checkPress()
 				|| (_pressInterval == 0 && _lastPress + 300 < millis()))
 			{
 				KoIR_co_n1Index(_index).value((uint8_t)0x00, DPT_DecimalFactor); //Dimm Stop
-				logInfoP("Dimmen beenden");
+				logDebugP("Dimmen beenden");
 				_pressState = 0;
 			}
 			break;
@@ -271,29 +264,29 @@ void IrCodeModule::executeCode()
 	{
 		case 0:
 		{
-			logInfoP("Execute Switch");
+			logDebugP("Execute Switch");
 			int sw = ParamIR_inSwitchIndex(_index);
 
 			switch(sw)
 			{
 				case 1:
-					logInfoP("on");
+					logDebugP("on");
 					KoIR_co_n1Index(_index).value(true, DPT_Switch);
 					KoIR_co_n2Index(_index).valueNoSend(true, DPT_Switch);
 					break;
 
 				case 2:
-					logInfoP("off");
+					logDebugP("off");
 					KoIR_co_n1Index(_index).value(false, DPT_Switch);
 					KoIR_co_n2Index(_index).valueNoSend(false, DPT_Switch);
 					break;
 
 				case 0:
-					logInfoP("toggle");
+					logDebugP("toggle");
 					KNXValue val = KoIR_co_n2Index(_index).value(DPT_Switch);
-					logInfoP("State is %i", (bool)val);
+					logDebugP("State is %i", (bool)val);
 					bool value = !val;
-					logInfoP("Set state %i", value);
+					logDebugP("Set state %i", value);
 					KoIR_co_n1Index(_index).value(value, DPT_Switch);
 					KoIR_co_n2Index(_index).valueNoSend(value, DPT_Switch);
 					break;
@@ -303,7 +296,7 @@ void IrCodeModule::executeCode()
 		
 		case 1:
 		{
-			logInfoP("Execute Value");
+			logDebugP("Execute Value");
 			uint8_t sw = ParamIR_inValueIndex(_index);
 
 			KoIR_co_n1Index(_index).value(sw, Dpt(5,5));
@@ -312,7 +305,7 @@ void IrCodeModule::executeCode()
 		
 		case 2:
 		{
-			logInfoP("Execute Scene");
+			logDebugP("Execute Scene");
 			uint8_t sw = ParamIR_inSceneIndex(_index);
 			sw -= 1;
 			KoIR_co_n1Index(_index).value(sw, DPT_SceneNumber);
@@ -321,7 +314,7 @@ void IrCodeModule::executeCode()
 		
 		case 3:
 		{
-			logInfoP("Execute Dimm");
+			logDebugP("Execute Dimm");
 			
 			if(_pressState == 1)
 			{
@@ -350,9 +343,9 @@ void IrCodeModule::executeCode()
 		
 		case 4:
 		{
-			logInfoP("Execute Color");
+			logDebugP("Execute Color");
 			uint8_t *color = ParamIR_inColorIndex(_index);
-			logInfoP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
+			logDebugP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
 			uint32_t xcolor = color[2];
 			xcolor |= color[1] << 8;
 			xcolor |= color[0] << 16;
@@ -365,7 +358,7 @@ void IrCodeModule::executeCode()
 
 void IrCodeModule::sendCode(uint8_t index)
 {
-	logInfoP("Sending %i", index);
+	logDebugP("Sending %i", index);
 	IRData *data = this->read(index);
 	this->print(data, index);
 	rec->disableIRIn();
@@ -380,14 +373,14 @@ void IrCodeModule::print(IRData *data, uint8_t index)
 		logErrorP("Ungültiger Code %i", index);
 		return;
 	}*/
-	logInfoP("IR Code %i", index);
+	logDebugP("IR Code %i", index);
 	logIndentUp();
-	logInfoP("Protokoll %.2X", data->protocol);
-	logInfoP("Address %.4X", data->address);
-	logInfoP("Command %.4X", data->command);
-	logInfoP("Number %.4X", data->numberOfBits);
-	logInfoP("Extra %.4X", data->extra);
-	logInfoP("Flags %.2X", data->flags);
+	logDebugP("Protokoll %.2X", data->protocol);
+	logDebugP("Address %.4X", data->address);
+	logDebugP("Command %.4X", data->command);
+	logDebugP("Number %.4X", data->numberOfBits);
+	logDebugP("Extra %.4X", data->extra);
+	logDebugP("Flags %.2X", data->flags);
 	logIndentDown();
 }
 
@@ -438,25 +431,6 @@ IRData* IrCodeModule::read(uint8_t index)
 	temp = f.read() << 8;
 	data->extra = temp | f.read();
 	return data;
-
-	/*
-	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	uint8_t *pointer = knx.platform().getNonVolatileMemoryStart();
-	
-	
-
-	data->protocol = (decode_type_t)pointer[address];
-	int temp = pointer[address + 1] << 8;
-	data->address = temp | pointer[address + 2];
-
-	temp = pointer[address + 3] << 8;
-	data->command = temp | pointer[address + 4];
-	temp = pointer[address + 5] << 8;
-	data->numberOfBits = temp | pointer[address + 6];
-	temp = pointer[address + 7] << 8;
-	data->extra = temp | pointer[address + 8];
-	return data;
-	*/
 }
 
 void IrCodeModule::write(uint8_t index, IRData *data)
@@ -489,38 +463,29 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 	f.write((uint8_t)(data->extra >> 8));
 	f.write((uint8_t)(data->extra & 0xFF));
 
-	f.flush();
-	f.close();
-
-	/*uint8_t *buffer = new uint8_t[9] {
-		data->protocol,
-		(uint8_t)(data->address >> 8),
-		(uint8_t)(data->address & 0xFF),
-		(uint8_t)(data->command >> 8),
-		(uint8_t)(data->command & 0xFF),
-		(uint8_t)(data->numberOfBits >> 8),
-		(uint8_t)(data->numberOfBits & 0xFF),
-		(uint8_t)(data->extra >> 8),
-		(uint8_t)(data->extra & 0xFF),
-	};
-
-	long address = CODE_FLASH_OFFSET + (index * CODE_SIZE);
-	knx.platform().writeNonVolatileMemory(address, buffer, 9);
-	knx.platform().commitNonVolatileMemory();
+	/*uint8_t *buffer = new uint8_t[9];
+	buffer[0] = data->protocol;
+	pushWord(data->address, buffer+1);
+	pushWord(data->command, buffer+3);
+	pushWord(data->numberOfBits, buffer+5);
+	pushWord(data->extra, buffer+7);
 
 	delete[] buffer;*/
+
+	f.flush();
+	f.close();
 }
 
 //will be called once a KO received a telegram
 void IrCodeModule::processInputKo(GroupObject& iKo)
 {
     int index = floor((iKo.asap() - 1) / 2);
-	logInfoP("got KO %i is index %i", iKo.asap(), index);
+	logDebugP("got KO %i is index %i", iKo.asap(), index);
 
 	int type = ParamIR_inOutTypeIndex(index);
 	if(type != 2)
 	{
-		logInfoP("KO ist nicht zum Empfangen gedacht");
+		logDebugP("KO ist nicht zum Empfangen gedacht");
 		return;
 	}
 
@@ -529,20 +494,20 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 	{
 		case 0: //Switch
 		{
-			logInfoP("Switch");
+			logDebugP("Switch");
 			int stype = ParamIR_outSwitchIndex(index);
 			switch(stype)
 			{
 				case 0: //Always
 				{
-					logInfoP("Send Always");
+					logDebugP("Send Always");
 					sendCode(index);
 					break;
 				}
 				
 				case 1: //On
 				{
-					logInfoP("Send On");
+					logDebugP("Send On");
 					if(iKo.value(DPT_Switch))
 						sendCode(index);
 					break;
@@ -550,7 +515,7 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 				
 				case 2: //Off
 				{
-					logInfoP("Send Off");
+					logDebugP("Send Off");
 					if(!iKo.value(DPT_Switch))
 						sendCode(index);
 					break;
@@ -561,6 +526,7 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 		
 		case 1: //Value
 		{
+			logDebugP("Value");
 			int svalue = ParamIR_outValueIndex(index);
 			int ivalue = (uint8_t)iKo.value(DPT_Scaling);
 			if(svalue == ivalue)
@@ -570,6 +536,7 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 		
 		case 2: //Scene
 		{
+			logDebugP("Scene");
 			uint8_t ivalue = (uint8_t)iKo.value(DPT_SceneNumber);
 			if(ParamIR_outSceneActive1Index(index))
 			{
@@ -620,7 +587,7 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 	{
 		case 0x01:
 		{
-			logInfoP("Learn index %i", data[0]);
+			logDebugP("Learn index %i", data[0]);
 			_index = data[0];
 			_state = 1;
 			resultData[0] = 0x00;
@@ -630,7 +597,7 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 
 		case 0x02:
 		{
-			logInfoP("Delete index %i", data[0]);
+			logDebugP("Delete index %i", data[0]);
 			resultData[0] = 0x00;
 			resultLength = 1;
 			_data = new IRData();
@@ -644,7 +611,7 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 
 		default:
 		{
-			logInfoP("Unbekanntes Kommando");
+			logErrorP("Unbekanntes Kommando");
 			resultData[0] = 0xFF;
 			resultLength = 1;
 			break;
@@ -667,3 +634,6 @@ bool IrCodeModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t pro
 
 	return false;
 }
+
+IrCodeModule openknxIrCodeModule;
+extern IrCodeModule openknxIrCodeModule;
