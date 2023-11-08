@@ -40,6 +40,7 @@ class IrCodeModule : public OpenKNX::Module
 		long lastCode = 0;
 		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 		bool processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
+		bool processCommand(const std::string cmd, bool diagnoseKo) override;
 };
 
 //Give your Module a name
@@ -61,7 +62,7 @@ const std::string IrCodeModule::version()
 //only if knx.configured == true
 void IrCodeModule::setup()
 {
-    rec = new IRrecv(P29);
+    rec = new IRrecv(13);
 	rec->enableIRIn();
 
 	//send = new IRsend(P21);
@@ -102,6 +103,7 @@ void IrCodeModule::loop()
 				_data->extra = rec->decodedIRData.extra;
 
 				_state = 2;
+				logDebugP("IR Code empfangen. Zum verifizieren erneut senden");
 				rec->resume();
 			}
 			break;
@@ -141,6 +143,7 @@ void IrCodeModule::loop()
 
 				this->write(_index, _data);
 				this->print(_data, _index);
+				logDebugP("IR Code erhalten und gespeichert");
 
 				delete _data;
 
@@ -344,7 +347,11 @@ void IrCodeModule::executeCode()
 		case 4:
 		{
 			logDebugP("Execute Color");
-			uint8_t *color = ParamIR_inColorIndex(_index);
+			uint8_t *color;
+			if(ParamIR_inColorTypeIndex(_index))
+				color = ParamIR_inColor_HSVIndex(_index);
+			else
+				color = ParamIR_inColor_RGBIndex(_index);
 			logDebugP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
 			uint32_t xcolor = color[2];
 			xcolor |= color[1] << 8;
@@ -587,7 +594,8 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 	{
 		case 0x01:
 		{
-			logDebugP("Learn index %i", data[0]);
+			logDebugP("Lerne index %i", data[0]);
+			logDebugP("Bitte IR Code senden");
 			_index = data[0];
 			_state = 1;
 			resultData[0] = 0x00;
@@ -597,7 +605,7 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 
 		case 0x02:
 		{
-			logDebugP("Delete index %i", data[0]);
+			logDebugP("Entferne index %i", data[0]);
 			resultData[0] = 0x00;
 			resultLength = 1;
 			_data = new IRData();
@@ -605,7 +613,7 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 			_data->address = 0;
 			_data->command = 0;
 			this->write(data[0], _data);
-			delete data;
+			delete _data;
 			break;
 		}
 
@@ -631,6 +639,45 @@ bool IrCodeModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t pro
 			_state = 0;
 		return true;
 	}
+
+	return false;
+}
+
+bool IrCodeModule::processCommand(const std::string cmd, bool diagnoseKo)
+{
+	if(diagnoseKo) return false;
+
+	std::size_t pos = cmd.find(' ');
+	std::string command;
+	std::string arg;
+	if(pos != -1)
+	{
+		command = cmd.substr(0, pos);
+		arg = cmd.substr(pos+1, cmd.length() - pos - 1);
+	} else {
+		command = cmd;
+	}
+
+	if(command == "learnIR")
+	{
+		_index = std::stoi(arg);
+		logDebugP("Lerne index %i", _index);
+		logDebugP("Bitte IR Code senden");
+		_state = 1;
+		return true;
+	}
+	if(command == "deleteIR")
+	{
+		logDebugP("Entferne index %i", _index);
+		_data = new IRData();
+		_data->protocol = decode_type_t::UNKNOWN;
+		_data->address = 0;
+		_data->command = 0;
+		this->write(_index, _data);
+		delete _data;
+		return true;
+	}
+
 
 	return false;
 }
