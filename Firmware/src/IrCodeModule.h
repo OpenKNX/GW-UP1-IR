@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "OpenKNX.h"
 #include "hardware.h"
-#include "IRremote.h"
+#include "IRremote.hpp"
 #include "pins.h"
 #include "knxprod.h"
 #include "LittleFS.h"

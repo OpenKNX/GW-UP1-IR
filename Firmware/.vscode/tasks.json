@@ -8,7 +8,7 @@
             "type": "shell",
             "command": "scripts/Upload-Firmware.ps1",
             "args": [
-                "release_REG1"
+                "release_UP1"
             ],
             "group": "build",
             "problemMatcher": []
