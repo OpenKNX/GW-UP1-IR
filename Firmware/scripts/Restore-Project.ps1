@@ -1,4 +1,4 @@
-param ([Switch]$checkoutHash=$false,[bool]$wait=$True)
+param ([Switch]$checkoutHash=$false,[bool]$wait=$true)
 
 # we assume, we start this script in projects "restore" directory
 $oldDir = Get-Location
@@ -36,6 +36,9 @@ foreach ($subproject in $subprojects) {
             if (!$?) {
                 Write-Host "  FAIL: clone" -ForegroundColor Red
                 Set-Location $oldDir
+                if($wait -eq $True) {
+                    timeout /T 20
+                }
                 exit 1
             }
         }
@@ -46,6 +49,9 @@ foreach ($subproject in $subprojects) {
         if (!$?) {
             Write-Host "  FAIL: fetch --all" -ForegroundColor Red
             Set-Location $oldDir
+            if($wait -eq $True) {
+                timeout /T 20
+            }
             exit 1
         }
 
@@ -59,6 +65,9 @@ foreach ($subproject in $subprojects) {
         if (!$?) {
             Write-Host "  FAIL: checkout" -ForegroundColor Red
             Set-Location $oldDir
+            if($wait -eq $True) {
+                timeout /T 20
+            }
             exit 1
         }
         if(-Not $checkoutHash) {
@@ -66,6 +75,9 @@ foreach ($subproject in $subprojects) {
             if (!$?) {
                 Write-Host "  FAIL: pull --ff-only" -ForegroundColor Red
                 Set-Location $oldDir
+                if($wait -eq $True) {
+                    timeout /T 20
+                }
                 exit 1
             }
         }

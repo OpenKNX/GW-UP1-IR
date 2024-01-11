@@ -1,4 +1,4 @@
-.pio
-.vscode/**
-*/versions.h
+.pio/*
+.vscode/*
 lib/*
+include/versions.h
