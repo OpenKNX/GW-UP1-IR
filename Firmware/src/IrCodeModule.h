@@ -631,7 +631,7 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 
 bool IrCodeModule::processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
 {
-	if(objectIndex == 0 && propertyId == 242)
+	if(objectIndex == 0xA0 && propertyId == 0)
 	{
 		resultData[0] = _state;
 		resultLength = 1;
