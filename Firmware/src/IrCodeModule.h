@@ -588,15 +588,15 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 
 bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength)
 {
-	if(objectIndex != 0 || propertyId != 242) return false;
+	if(objectIndex != 0xA0 || propertyId != 0) return false;
 
-	switch(data[1])
+	switch(data[0])
 	{
 		case 0x01:
 		{
-			logDebugP("Lerne index %i", data[0]);
+			logDebugP("Lerne index %i", data[1]);
 			logDebugP("Bitte IR Code senden");
-			_index = data[0];
+			_index = data[1];
 			_state = 1;
 			resultData[0] = 0x00;
 			resultLength = 1;
@@ -605,14 +605,14 @@ bool IrCodeModule::processFunctionProperty(uint8_t objectIndex, uint8_t property
 
 		case 0x02:
 		{
-			logDebugP("Entferne index %i", data[0]);
+			logDebugP("Entferne index %i", data[1]);
 			resultData[0] = 0x00;
 			resultLength = 1;
 			_data = new IRData();
 			_data->protocol = decode_type_t::UNKNOWN;
 			_data->address = 0;
 			_data->command = 0;
-			this->write(data[0], _data);
+			this->write(data[1], _data);
 			delete _data;
 			break;
 		}
