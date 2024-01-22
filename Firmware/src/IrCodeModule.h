@@ -41,6 +41,17 @@ class IrCodeModule : public OpenKNX::Module
 		bool processFunctionProperty(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 		bool processFunctionPropertyState(uint8_t objectIndex, uint8_t propertyId, uint8_t length, uint8_t *data, uint8_t *resultData, uint8_t &resultLength) override;
 		bool processCommand(const std::string cmd, bool diagnoseKo) override;
+		void koHandleSwitch(GroupObject &ko, uint8_t index);
+		void koHandleValue(GroupObject &ko, uint8_t index);
+		void koHandleScene(GroupObject &ko, uint8_t index);
+		void executeSwitch();
+		void executeValue();
+		void executeScene();
+		void executeDimm();
+		void executeColor();
+		void loopStateIdle();
+		void loopStateVerify();
+		void loopStateCheck();
 };
 
 //Give your Module a name
@@ -78,79 +89,94 @@ void IrCodeModule::loop()
 	{
 		case 0:
 		{
-			if(rec->decode())
-			{
-				rec->resume();
-				handleCode();
-			}
-			checkPress();
+			loopStateIdle();
 			break;
 		}
 
 		case 1:
 		{
-			if(rec->decode())
-			{
-				rec->resume();
-				if(rec->decodedIRData.protocol == 0 || rec->decodedIRData.address == 0 || rec->decodedIRData.numberOfBits == 0) return;
-
-				_data = new IRData();
-				_data->protocol = rec->decodedIRData.protocol;
-				_data->address = rec->decodedIRData.address;
-				_data->command = rec->decodedIRData.command;
-				_data->numberOfBits = rec->decodedIRData.numberOfBits;
-				_data-> flags = rec->decodedIRData.flags;
-				_data->extra = rec->decodedIRData.extra;
-
-				_state = 2;
-				logDebugP("IR Code empfangen. Zum verifizieren erneut senden");
-				rec->resume();
-			}
+			loopStateVerify();
 			break;
 		}
 
 		case 2:
 		{
-			if(rec->decode())
-			{
-				rec->resume();
-				if(rec->decodedIRData.protocol == 0 || rec->decodedIRData.address == 0 || rec->decodedIRData.numberOfBits == 0) return;
-
-				if(rec->decodedIRData.protocol != _data->protocol)
-				{
-					logErrorP("Protokoll unterschiedlich");
-					_state = 3;
-					return;
-				}
-				if(rec->decodedIRData.address != _data->address)
-				{
-					logErrorP("Adresse unterschiedlich");
-					_state = 3;
-					return;
-				}
-				if(rec->decodedIRData.numberOfBits != _data->numberOfBits)
-				{
-					logErrorP("NumberOfBits unterschiedlich");
-					_state = 3;
-					return;
-				}
-				if(rec->decodedIRData.command != _data->command)
-				{
-					logErrorP("Command unterschiedlich");
-					_state = 3;
-					return;
-				}
-
-				this->write(_index, _data);
-				this->print(_data, _index);
-				logDebugP("IR Code erhalten und gespeichert");
-
-				delete _data;
-
-				_state = 0;
-			}
+			loopStateCheck();
 			break;
 		}
+	}
+}
+
+void IrCodeModule::loopStateIdle()
+{
+	if(rec->decode())
+	{
+		rec->resume();
+		handleCode();
+	}
+	checkPress();
+}
+
+void IrCodeModule::loopStateVerify()
+{
+	if(rec->decode())
+	{
+		rec->resume();
+		if(rec->decodedIRData.protocol == 0 || rec->decodedIRData.address == 0 || rec->decodedIRData.numberOfBits == 0) return;
+
+		_data = new IRData();
+		_data->protocol = rec->decodedIRData.protocol;
+		_data->address = rec->decodedIRData.address;
+		_data->command = rec->decodedIRData.command;
+		_data->numberOfBits = rec->decodedIRData.numberOfBits;
+		_data-> flags = rec->decodedIRData.flags;
+		_data->extra = rec->decodedIRData.extra;
+
+		_state = 2;
+		logDebugP("IR Code empfangen. Zum verifizieren erneut senden");
+		rec->resume();
+	}
+}
+
+void IrCodeModule::loopStateCheck()
+{
+	if(rec->decode())
+	{
+		rec->resume();
+		if(rec->decodedIRData.protocol == 0 || rec->decodedIRData.address == 0 || rec->decodedIRData.numberOfBits == 0) return;
+
+		if(rec->decodedIRData.protocol != _data->protocol)
+		{
+			logErrorP("Protokoll unterschiedlich");
+			_state = 3;
+			return;
+		}
+		if(rec->decodedIRData.address != _data->address)
+		{
+			logErrorP("Adresse unterschiedlich");
+			_state = 3;
+			return;
+		}
+		if(rec->decodedIRData.numberOfBits != _data->numberOfBits)
+		{
+			logErrorP("NumberOfBits unterschiedlich");
+			_state = 3;
+			return;
+		}
+		if(rec->decodedIRData.command != _data->command)
+		{
+			logErrorP("Command unterschiedlich");
+			_state = 3;
+			return;
+		}
+
+		this->write(_index, _data);
+		this->print(_data, _index);
+		logDebugP("IR Code erhalten und gespeichert");
+
+		delete _data;
+
+		_state = 0;
 	}
 }
 
@@ -267,100 +293,121 @@ void IrCodeModule::executeCode()
 	{
 		case 0:
 		{
-			logDebugP("Execute Switch");
-			int sw = ParamIR_inSwitchIndex(_index);
-
-			switch(sw)
-			{
-				case 1:
-					logDebugP("on");
-					KoIR_co_n1Index(_index).value(true, DPT_Switch);
-					KoIR_co_n2Index(_index).valueNoSend(true, DPT_Switch);
-					break;
-
-				case 2:
-					logDebugP("off");
-					KoIR_co_n1Index(_index).value(false, DPT_Switch);
-					KoIR_co_n2Index(_index).valueNoSend(false, DPT_Switch);
-					break;
-
-				case 0:
-					logDebugP("toggle");
-					KNXValue val = KoIR_co_n2Index(_index).value(DPT_Switch);
-					logDebugP("State is %i", (bool)val);
-					bool value = !val;
-					logDebugP("Set state %i", value);
-					KoIR_co_n1Index(_index).value(value, DPT_Switch);
-					KoIR_co_n2Index(_index).valueNoSend(value, DPT_Switch);
-					break;
-			}
+			executeSwitch();
 			break;
 		}
 		
 		case 1:
 		{
-			logDebugP("Execute Value");
-			uint8_t sw = ParamIR_inValueIndex(_index);
-
-			KoIR_co_n1Index(_index).value(sw, Dpt(5,5));
+			executeValue();
 			break;
 		}
 		
 		case 2:
 		{
-			logDebugP("Execute Scene");
-			uint8_t sw = ParamIR_inSceneIndex(_index);
-			sw -= 1;
-			KoIR_co_n1Index(_index).value(sw, DPT_SceneNumber);
+			executeScene();
 			break;
 		}
 		
 		case 3:
 		{
-			logDebugP("Execute Dimm");
-			
-			if(_pressState == 1)
-			{
-				_pressState = 2;
-			}
-			
-			if(_pressState == 0)
-			{
-				if(ParamIR_inDimmSwitchIndex(_index))
-					_pressState = 1;
-				else
-					_pressState = 2;
-			}
-			
-			if(_pressInterval == 0)
-				_pressInterval = 1;
-			else if(_pressInterval == 1)
-			{
-				_pressInterval = millis() - _lastPress + 30;
-				logErrorP("Interval: %i", millis() - _lastPress);
-			}
-
-			_lastPress = millis();
+			executeDimm();
 			break;
 		}
 		
 		case 4:
 		{
-			logDebugP("Execute Color");
-			uint8_t *color;
-			if(ParamIR_inColorTypeIndex(_index))
-				color = ParamIR_inColor_HSVIndex(_index);
-			else
-				color = ParamIR_inColor_RGBIndex(_index);
-			logDebugP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
-			uint32_t xcolor = color[2];
-			xcolor |= color[1] << 8;
-			xcolor |= color[0] << 16;
-			KoIR_co_n1Index(_index).value(xcolor, DPT_Colour_RGB);
+			executeColor();
 			break;
-		}
-		
+		}		
 	}
+}
+
+void IrCodeModule::executeSwitch()
+{
+	logDebugP("Execute Switch");
+	int sw = ParamIR_inSwitchIndex(_index);
+
+	switch(sw)
+	{
+		case 1:
+			logDebugP("on");
+			KoIR_co_n1Index(_index).value(true, DPT_Switch);
+			KoIR_co_n2Index(_index).valueNoSend(true, DPT_Switch);
+			break;
+
+		case 2:
+			logDebugP("off");
+			KoIR_co_n1Index(_index).value(false, DPT_Switch);
+			KoIR_co_n2Index(_index).valueNoSend(false, DPT_Switch);
+			break;
+
+		case 0:
+			logDebugP("toggle");
+			KNXValue val = KoIR_co_n2Index(_index).value(DPT_Switch);
+			logDebugP("State is %i", (bool)val);
+			bool value = !val;
+			logDebugP("Set state %i", value);
+			KoIR_co_n1Index(_index).value(value, DPT_Switch);
+			KoIR_co_n2Index(_index).valueNoSend(value, DPT_Switch);
+			break;
+	}
+}
+
+void IrCodeModule::executeValue()
+{
+	logDebugP("Execute Value");
+	uint8_t sw = ParamIR_inValueIndex(_index);
+	KoIR_co_n1Index(_index).value(sw, Dpt(5,5));
+}
+
+void IrCodeModule::executeScene()
+{
+	logDebugP("Execute Scene");
+	uint8_t sw = ParamIR_inSceneIndex(_index);
+	sw -= 1;
+	KoIR_co_n1Index(_index).value(sw, DPT_SceneNumber);
+}
+
+void IrCodeModule::executeDimm()
+{
+	logDebugP("Execute Dimm");
+	
+	if(_pressState == 1)
+		_pressState = 2;
+	
+	if(_pressState == 0)
+	{
+		if(ParamIR_inDimmSwitchIndex(_index))
+			_pressState = 1;
+		else
+			_pressState = 2;
+	}
+	
+	if(_pressInterval == 0)
+		_pressInterval = 1;
+	else if(_pressInterval == 1)
+	{
+		_pressInterval = millis() - _lastPress + 30;
+		logErrorP("Interval: %i", millis() - _lastPress);
+	}
+
+	_lastPress = millis();
+}
+
+void IrCodeModule::executeColor()
+{
+	logDebugP("Execute Color");
+	uint8_t *color;
+	if(ParamIR_inColorTypeIndex(_index))
+		color = ParamIR_inColor_HSVIndex(_index);
+	else
+		color = ParamIR_inColor_RGBIndex(_index);
+	logDebugP("#%.2X%.2X%.2X", color[0], color[1], color[2]);
+	uint32_t xcolor = color[2];
+	xcolor |= color[1] << 8;
+	xcolor |= color[0] << 16;
+	KoIR_co_n1Index(_index).value(xcolor, DPT_Colour_RGB);
 }
 
 void IrCodeModule::sendCode(uint8_t index)
@@ -486,7 +533,7 @@ void IrCodeModule::write(uint8_t index, IRData *data)
 //will be called once a KO received a telegram
 void IrCodeModule::processInputKo(GroupObject& iKo)
 {
-    int index = floor((iKo.asap() - 1) / 2);
+    uint8_t index = floor((iKo.asap() - 1) / 2);
 	logDebugP("got KO %i is index %i", iKo.asap(), index);
 
 	int type = ParamIR_inOutTypeIndex(index);
@@ -501,87 +548,102 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 	{
 		case 0: //Switch
 		{
-			logDebugP("Switch");
-			int stype = ParamIR_outSwitchIndex(index);
-			switch(stype)
-			{
-				case 0: //Always
-				{
-					logDebugP("Send Always");
-					sendCode(index);
-					break;
-				}
-				
-				case 1: //On
-				{
-					logDebugP("Send On");
-					if(iKo.value(DPT_Switch))
-						sendCode(index);
-					break;
-				}
-				
-				case 2: //Off
-				{
-					logDebugP("Send Off");
-					if(!iKo.value(DPT_Switch))
-						sendCode(index);
-					break;
-				}
-			}
+			koHandleSwitch(iKo, index);
 			break;
 		}
 		
 		case 1: //Value
 		{
-			logDebugP("Value");
-			int svalue = ParamIR_outValueIndex(index);
-			int ivalue = (uint8_t)iKo.value(DPT_Scaling);
-			if(svalue == ivalue)
-				sendCode(index);
+			koHandleValue(iKo, index);
 			break;
 		}
 		
 		case 2: //Scene
 		{
-			logDebugP("Scene");
-			uint8_t ivalue = (uint8_t)iKo.value(DPT_SceneNumber);
-			if(ParamIR_outSceneActive1Index(index))
-			{
-				int svalue = ParamIR_outScene1Index(index) - 1;
-				if(svalue == ivalue)
-				{
-					sendCode(index);
-					break;
-				}
-			}
-			if(ParamIR_outSceneActive2Index(index))
-			{
-				int svalue = ParamIR_outScene2Index(index) - 1;
-				if(svalue == ivalue)
-				{
-					sendCode(index);
-					break;
-				}
-			}
-			if(ParamIR_outSceneActive3Index(index))
-			{
-				int svalue = ParamIR_outScene3Index(index) - 1;
-				if(svalue == ivalue)
-				{
-					sendCode(index);
-					break;
-				}
-			}
-			if(ParamIR_outSceneActive4Index(index))
-			{
-				int svalue = ParamIR_outScene4Index(index) - 1;
-				if(svalue == ivalue)
-				{
-					sendCode(index);
-					break;
-				}
-			}
+			koHandleScene(iKo, index);
 			break;
+		}
+	}
+}
+
+void IrCodeModule::koHandleSwitch(GroupObject &iKo, uint8_t index)
+{
+	logDebugP("Switch");
+	int stype = ParamIR_outSwitchIndex(index);
+	switch(stype)
+	{
+		case 0: //Always
+		{
+			logDebugP("Send Always");
+			sendCode(index);
+			break;
+		}
+		
+		case 1: //On
+		{
+			logDebugP("Send On");
+			if(iKo.value(DPT_Switch))
+				sendCode(index);
+			break;
+		}
+		
+		case 2: //Off
+		{
+			logDebugP("Send Off");
+			if(!iKo.value(DPT_Switch))
+				sendCode(index);
+			break;
+		}
+	}
+}
+
+void IrCodeModule::koHandleValue(GroupObject &iKo, uint8_t index)
+{
+	logDebugP("Value");
+	int svalue = ParamIR_outValueIndex(index);
+	int ivalue = (uint8_t)iKo.value(DPT_Scaling);
+	if(svalue == ivalue)
+		sendCode(index);
+}
+
+void IrCodeModule::koHandleScene(GroupObject &iKo, uint8_t index)
+{
+	logDebugP("Scene");
+	uint8_t ivalue = (uint8_t)iKo.value(DPT_SceneNumber);
+	if(ParamIR_outSceneActive1Index(index))
+	{
+		int svalue = ParamIR_outScene1Index(index) - 1;
+		if(svalue == ivalue)
+		{
+			sendCode(index);
+			return;
+		}
+	}
+	if(ParamIR_outSceneActive2Index(index))
+	{
+		int svalue = ParamIR_outScene2Index(index) - 1;
+		if(svalue == ivalue)
+		{
+			sendCode(index);
+			return;
+		}
+	}
+	if(ParamIR_outSceneActive3Index(index))
+	{
+		int svalue = ParamIR_outScene3Index(index) - 1;
+		if(svalue == ivalue)
+		{
+			sendCode(index);
+			return;
+		}
+	}
+	if(ParamIR_outSceneActive4Index(index))
+	{
+		int svalue = ParamIR_outScene4Index(index) - 1;
+		if(svalue == ivalue)
+		{
+			sendCode(index);
+			return;
 		}
 	}
 }

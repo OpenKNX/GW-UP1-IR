@@ -4,7 +4,7 @@ if(-Not (Test-Path -Path platformio.ini)) {
     Set-Location ..
 }
 if(-Not (Test-Path -Path platformio.ini)) {
-    Write-Host "Skript aus falschem Pfad ausgeführt..."
+    Write-Output "Skript aus falschem Pfad ausgeführt..."
     timeout /T 20
     exit 1
 }
@@ -12,14 +12,14 @@ $projectDir = Get-Location
 
 if($env -eq $null)
 {
-    Write-Host "No environment specified. Will search for release..."
+    Write-Output "No environment specified. Will search for release..."
     $content = Get-Content $projectDir/platformio.ini -raw
     if($content -match '\[env:(release_.*)\]')
     {
-        Write-Host "Found release $($Matches.1)"
+        Write-Output "Found release $($Matches.1)"
         $env = $Matches.1
     } else {
-        Write-Host "Didnt found host"
+        Write-Output "Didnt found host"
         timeout /T 20
         exit 1
     }
