@@ -1,3 +1,7 @@
+![Issues](https://badgen.net/github/open-issues/OpenKNX/GW-UP1-IR)
+![Branches](https://badgen.net/github/branches/OpenKNX/GW-UP1-IR)
+[![CodeFactor](https://www.codefactor.io/repository/github/openknx/gw-up1-ir/badge)](https://www.codefactor.io/repository/github/openknx/gw-up1-ir)
+
 # KNX IR-Modul
 Can be used to receive and send ir-codes.
 
