@@ -5,12 +5,35 @@
             (time & 0xC000) == 0x0000 ? (time & 0x3FFF) * 1000 : \
             (time & 0xC000) == 0x4000 ? (time & 0x3FFF) * 60000 : \
             (time & 0xC000) == 0x8000 ? ((time & 0x3FFF) > 1000 ? 3600000 : \
-                                         (time & 0x3FFF) * 3600000 ) : 0 )
+                                            (time & 0x3FFF) * 3600000 ) : 0 )
+#define PT_active_not active 0
+#define PT_active_active 1
+#define PT_ir_receive_switch 0
+#define PT_ir_receive_value 1
+#define PT_ir_receive_scene 2
+#define PT_ir_receive_dimm 3
+#define PT_ir_receive_color 4
+#define PT_switch_type_in_um 0
+#define PT_switch_type_in_on 1
+#define PT_switch_type_in_off 2
+#define PT_direction_auf 0
+#define PT_direction_ab 1
+#define PT_ir_send_switch 0
+#define PT_ir_send_value 1
+#define PT_ir_send_scene 2
+#define PT_rgb_hsv_rgb 0
+#define PT_rgb_hsv_hsv 1
+#define PT_inout_off 0
+#define PT_inout_in 1
+#define PT_inout_out 2
+#define PT_switch_type_out_any 0
+#define PT_switch_type_out_on 1
+#define PT_switch_type_out_off 2
 //--------------------Allgemein---------------------------
 #define MAIN_OpenKnxId 0xA4
 #define MAIN_ApplicationNumber 0x00
-#define MAIN_ApplicationVersion 0x03
-#define MAIN_OrderNumber "GW-UP1-IR.01" //may not work with multiple devices on same hardware or app on different hardware
+#define MAIN_ApplicationVersion 0x00
+#define MAIN_OrderNumber "GW-UP1-IR.01"
 #define MAIN_ParameterSize 96
 #define MAIN_MaxKoNumber 47
 
@@ -78,11 +101,11 @@
 #define ParamIR_inColor_HSVIndex(X) knx.paramData((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1))
 // UnionOffset: 1, ParaOffset: 0, BitOffset: 6, Size: 24 Bit (3 Byte), Text: Farbe
 #define ParamIR_inColor_HSV knx.paramData((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1))
-#define IR_inColorType		0x0004
-// UnionOffset: 1, ParaOffset: 3, BitOffset: 2, Size: 1 Bit, Text: Ausgabe als
-#define ParamIR_inColorTypeIndex(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 4), 2)
-// UnionOffset: 1, ParaOffset: 3, BitOffset: 2, Size: 1 Bit, Text: Ausgabe als
-#define ParamIR_inColorType knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 4), 2)
+#define IR_inColorType		0x0001
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 5, Size: 1 Bit, Text: Ausgabe als
+#define ParamIR_inColorTypeIndex(X) knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * X + 1), 5)
+// UnionOffset: 1, ParaOffset: 0, BitOffset: 5, Size: 1 Bit, Text: Ausgabe als
+#define ParamIR_inColorType knx.paramBit((IR_ParamBlockOffset + IR_ParamBlockSize * channelIndex() + 1), 5)
 #define IR_outType		0x0001
 #define IR_outType_Shift	6
 #define IR_outType_Mask	0x0003

@@ -1,5 +1,6 @@
-*/.pio/*
-*/.vscode/*
+.pio/*
+.vscode/*
+lib/*
+include/versions.h
 
-#KiCad
 */*-backups/*.zip

@@ -2,7 +2,6 @@
 #include "OpenKNX.h"
 #include "hardware.h"
 #include "IRremote.hpp"
-#include "pins.h"
 #include "knxprod.h"
 #include "LittleFS.h"
 
@@ -12,6 +11,7 @@ class IrCodeModule : public OpenKNX::Module
 		void loop() override;
 		void setup() override;
 		void processInputKo(GroupObject &ko) override;
+		void showHelp() override;
 
 		const std::string name() override;
 		const std::string version() override;
@@ -73,14 +73,14 @@ const std::string IrCodeModule::version()
 //only if knx.configured == true
 void IrCodeModule::setup()
 {
-    rec = new IRrecv(13);
+    rec = new IRrecv(IR_PIN_REC);
 	rec->enableIRIn();
 
 	//send = new IRsend(P21);
 	//send->begin(P21);
 	send = new IRsend();
 	send->begin();
-	send->enableIROut(38);
+	send->enableIROut(IR_SEND_PIN);
 }
 
 void IrCodeModule::loop()
@@ -133,7 +133,7 @@ void IrCodeModule::loopStateVerify()
 		_data->extra = rec->decodedIRData.extra;
 
 		_state = 2;
-		logDebugP("IR Code empfangen. Zum verifizieren erneut senden");
+		logInfoP("IR Code empfangen. Zum verifizieren erneut senden");
 		rec->resume();
 	}
 }
@@ -172,7 +172,7 @@ void IrCodeModule::loopStateCheck()
 
 		this->write(_index, _data);
 		this->print(_data, _index);
-		logDebugP("IR Code erhalten und gespeichert");
+		logInfoP("IR Code erhalten und gespeichert");
 
 		delete _data;
 
@@ -291,31 +291,31 @@ void IrCodeModule::executeCode()
 	int type = ParamIR_inTypeIndex(_index);
 	switch(type)
 	{
-		case 0:
+		case PT_ir_receive_switch:
 		{
 			executeSwitch();
 			break;
 		}
 		
-		case 1:
+		case PT_ir_receive_value:
 		{
 			executeValue();
 			break;
 		}
 		
-		case 2:
+		case PT_ir_receive_scene:
 		{
 			executeScene();
 			break;
 		}
 		
-		case 3:
+		case PT_ir_receive_dimm:
 		{
 			executeDimm();
 			break;
 		}
 		
-		case 4:
+		case PT_ir_receive_color:
 		{
 			executeColor();
 			break;
@@ -330,19 +330,19 @@ void IrCodeModule::executeSwitch()
 
 	switch(sw)
 	{
-		case 1:
+		case PT_switch_type_in_on:
 			logDebugP("on");
 			KoIR_co_n1Index(_index).value(true, DPT_Switch);
 			KoIR_co_n2Index(_index).valueNoSend(true, DPT_Switch);
 			break;
 
-		case 2:
+		case PT_switch_type_in_off:
 			logDebugP("off");
 			KoIR_co_n1Index(_index).value(false, DPT_Switch);
 			KoIR_co_n2Index(_index).valueNoSend(false, DPT_Switch);
 			break;
 
-		case 0:
+		case PT_switch_type_in_um:
 			logDebugP("toggle");
 			KNXValue val = KoIR_co_n2Index(_index).value(DPT_Switch);
 			logDebugP("State is %i", (bool)val);
@@ -537,7 +537,7 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 	logDebugP("got KO %i is index %i", iKo.asap(), index);
 
 	int type = ParamIR_inOutTypeIndex(index);
-	if(type != 2)
+	if(type != PT_inout_out)
 	{
 		logDebugP("KO ist nicht zum Empfangen gedacht");
 		return;
@@ -546,19 +546,19 @@ void IrCodeModule::processInputKo(GroupObject& iKo)
 	type = ParamIR_outTypeIndex(index);
 	switch(type)
 	{
-		case 0: //Switch
+		case PT_ir_send_switch: //Switch
 		{
 			koHandleSwitch(iKo, index);
 			break;
 		}
 		
-		case 1: //Value
+		case PT_ir_send_value: //Value
 		{
 			koHandleValue(iKo, index);
 			break;
 		}
 		
-		case 2: //Scene
+		case PT_ir_send_scene: //Scene
 		{
 			koHandleScene(iKo, index);
 			break;
@@ -572,14 +572,14 @@ void IrCodeModule::koHandleSwitch(GroupObject &iKo, uint8_t index)
 	int stype = ParamIR_outSwitchIndex(index);
 	switch(stype)
 	{
-		case 0: //Always
+		case PT_switch_type_out_any: //Always
 		{
 			logDebugP("Send Always");
 			sendCode(index);
 			break;
 		}
 		
-		case 1: //On
+		case PT_switch_type_out_on: //On
 		{
 			logDebugP("Send On");
 			if(iKo.value(DPT_Switch))
@@ -587,7 +587,7 @@ void IrCodeModule::koHandleSwitch(GroupObject &iKo, uint8_t index)
 			break;
 		}
 		
-		case 2: //Off
+		case PT_switch_type_out_off: //Off
 		{
 			logDebugP("Send Off");
 			if(!iKo.value(DPT_Switch))
@@ -723,14 +723,14 @@ bool IrCodeModule::processCommand(const std::string cmd, bool diagnoseKo)
 	if(command == "learnIR")
 	{
 		_index = std::stoi(arg);
-		logDebugP("Lerne index %i", _index);
-		logDebugP("Bitte IR Code senden");
+		logInfoP("Lerne index %i", _index);
+		logInfoP("Bitte IR Code senden");
 		_state = 1;
 		return true;
 	}
 	if(command == "deleteIR")
 	{
-		logDebugP("Entferne index %i", _index);
+		logInfoP("Entferne index %i", _index);
 		_data = new IRData();
 		_data->protocol = decode_type_t::UNKNOWN;
 		_data->address = 0;
@@ -740,8 +740,13 @@ bool IrCodeModule::processCommand(const std::string cmd, bool diagnoseKo)
 		return true;
 	}
 
-
 	return false;
+}
+
+void IrCodeModule::showHelp()
+{
+	openknx.console.printHelpLine("learnIR", "Learn a new IR-Code");
+    openknx.console.printHelpLine("deleteIR", "Delete an existing IR-Code");
 }
 
 IrCodeModule openknxIrCodeModule;
